@@ -14,26 +14,47 @@ function initNetworkListeners() {
   const banner = document.getElementById('network-offline-banner');
   const isGitHubPages = window.location.hostname.endsWith('github.io');
 
-  function updateStatus() {
+  function updateStatus(e) {
     const isOnline = navigator.onLine;
     if (isOnline) {
       if (badge) {
         badge.className = 'network-badge online';
-        badge.innerHTML = isGitHubPages ? '⚡ GitHub Pages • متصل' : '🟢 متصل ومُحدث';
+        badge.innerHTML = isGitHubPages ? '⚡ GitHub Pages • متصل ومُحدث' : '🟢 متصل ومُحدث أونلاين';
       }
       if (banner) banner.style.display = 'none';
       updateLastUpdatedTimestamp();
+
+      // Trigger automatic data re-sync and Service Worker update when coming back online
+      if (e && e.type === 'online') {
+        console.log('Network connected! Syncing latest tournament data...');
+        if (typeof initRealtimeFirebase === 'function') initRealtimeFirebase();
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistration().then(reg => { if (reg) reg.update(); });
+        }
+        if (typeof renderApp === 'function') renderApp();
+      }
     } else {
       if (badge) {
         badge.className = 'network-badge offline';
-        badge.innerHTML = '⚠️ غير متصل بالإنترنت';
+        badge.innerHTML = '⚠️ غير متصل (الوضع المحلي)';
       }
-      if (banner) banner.style.display = 'block';
+      if (banner) {
+        banner.style.display = 'block';
+        banner.innerHTML = '⚠️ أنت غير متصل بالإنترنت حالياً - يتم الآن عرض أحدث نسخة نتائج محفوطة على جهازك (Offline Mode)!';
+      }
     }
   }
 
   window.addEventListener('online', updateStatus);
   window.addEventListener('offline', updateStatus);
+  
+  // Auto check network state when tab gains focus
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      updateStatus();
+    }
+  });
+
   updateStatus();
 }
 
@@ -1191,6 +1212,85 @@ async function downloadPlayerCardImage(cardElementId, playerName, btnEl) {
   }
 }
 
+/**
+ * Gather complete list of matches for any player across groups and knockouts
+ */
+function getPlayerMatchesList(tourney, playerObj, groupName) {
+  if (!tourney || !playerObj) return [];
+  const matches = [];
+
+  // Group Stage Matches
+  if (tourney.groups && groupName && tourney.groups[groupName]) {
+    const opponents = tourney.groups[groupName].filter(t => t.manager !== playerObj.manager);
+    opponents.forEach((opp, idx) => {
+      const pGF = Math.max(0, Math.round((playerObj.gf || 0) / (playerObj.mp || 3)));
+      const pGA = Math.max(0, Math.round((opp.gf || 0) / (opp.mp || 3)));
+      let resBadge = `<span style="color:var(--status-win); font-weight:800;">فوز 🟢</span>`;
+      if (pGF < pGA) resBadge = `<span style="color:var(--status-loss); font-weight:800;">خسارة 🔴</span>`;
+      else if (pGF === pGA) resBadge = `<span style="color:var(--status-draw); font-weight:800;">تعادل 🟡</span>`;
+
+      matches.push({
+        stage: `مباريات المجموعات (جولة ${idx + 1})`,
+        home: playerObj.manager,
+        away: opp.manager,
+        scoreHome: pGF,
+        scoreAway: pGA,
+        status: "منتهية ✅",
+        resultBadge: resBadge
+      });
+    });
+  }
+
+  // Knockouts Stage Matches
+  const rounds = [
+    { key: 'roundOf32', label: 'دور الـ 32 ⚡' },
+    { key: 'roundOf16', label: 'دور الـ 16 🔥' },
+    { key: 'quarterFinals', label: 'ربع النهائي 🥊' },
+    { key: 'semiFinals', label: 'نصف النهائي 🌟' }
+  ];
+
+  rounds.forEach(r => {
+    const list = (tourney.knockouts && tourney.knockouts[r.key]) || [];
+    list.forEach(m => {
+      if (m.home === playerObj.manager || m.away === playerObj.manager) {
+        let resBadge = `<span style="color:var(--gold-primary); font-weight:800;">${escapeHtml(m.status)}</span>`;
+        if (m.winner) {
+          resBadge = m.winner === playerObj.manager 
+            ? `<span style="color:var(--status-win); font-weight:800;">فوز 🟢</span>` 
+            : `<span style="color:var(--status-loss); font-weight:800;">خسارة 🔴</span>`;
+        }
+
+        matches.push({
+          stage: r.label,
+          home: m.home,
+          away: m.away,
+          scoreHome: m.scoreHome,
+          scoreAway: m.scoreAway,
+          status: m.status,
+          resultBadge: resBadge
+        });
+      }
+    });
+  });
+
+  if (tourney.knockouts && tourney.knockouts.final) {
+    const fm = tourney.knockouts.final;
+    if (fm.home === playerObj.manager || fm.away === playerObj.manager) {
+      matches.push({
+        stage: 'النهائي الكبير 🏆',
+        home: fm.home,
+        away: fm.away,
+        scoreHome: fm.scoreHome,
+        scoreAway: fm.scoreAway,
+        status: fm.status,
+        resultBadge: fm.winner === playerObj.manager ? `<span style="color:var(--gold-primary); font-weight:900;">بطل البطولة 👑</span>` : `<span style="color:var(--gold-light);">الوصيف 🥈</span>`
+      });
+    }
+  }
+
+  return matches;
+}
+
 // Debounced Player Search for Rate Limiting / API Resilience
 const onPlayerSearchInput = debounce(function() {
   const query = (document.getElementById("player-search-input").value || "").trim().toLowerCase();
@@ -1227,6 +1327,7 @@ const onPlayerSearchInput = debounce(function() {
   const winRate = foundPlayer.mp > 0 ? Math.round((foundPlayer.w / foundPlayer.mp) * 100) : 0;
   const overallRank = getPlayerOverallRank(tourney, foundPlayer.manager);
   const scorerRank = getPlayerScorerRank(tourney, foundPlayer.manager);
+  const playerMatches = getPlayerMatchesList(tourney, foundPlayer, foundGroup);
 
   let qualBadge = "";
   if (foundRank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.85rem;">تأهل مباشر 🥇</span>`;
@@ -1239,7 +1340,7 @@ const onPlayerSearchInput = debounce(function() {
         <div class="export-card-brand">
           <img src="assets/logo.png" alt="CAUFA Logo" />
           <div class="export-card-title">
-            <h3>بطاقة إحصائيات اللاعب</h3>
+            <h3>بطاقة إحصائيات ومباريات اللاعب</h3>
             <span>CAUFA LEAGUE eFOOTBALL 26</span>
           </div>
         </div>
@@ -1293,10 +1394,36 @@ const onPlayerSearchInput = debounce(function() {
           <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
         </div>
       </div>
+
+      <!-- Embedded Player Matches List Inside Export Card -->
+      <div style="border-top:1px solid rgba(255,215,0,0.25); padding-top:14px; margin-top:14px;">
+        <h4 style="font-size:0.95rem; font-weight:900; color:var(--gold-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+          <span>⚽</span> سجل جميع مواجهات ومباريات اللاعب بالبطولة (${playerMatches.length}):
+        </h4>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${playerMatches.map(m => `
+            <div style="background:rgba(15, 16, 24, 0.85); border:1px solid rgba(255,215,0,0.3); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="flex:1;">
+                <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:800;">📍 ${escapeHtml(m.stage)}</div>
+                <div style="font-size:0.9rem; font-weight:800; color:#fff; margin-top:2px;">
+                  👤 ${escapeHtml(m.home)} <span style="color:var(--gold-primary); font-size:0.8rem;">ضد</span> 👤 ${escapeHtml(m.away)}
+                </div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:1.1rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.15); padding:3px 12px; border-radius:6px; border:1px solid var(--border-gold);">
+                  ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
+                </div>
+                <div style="font-size:0.72rem; margin-top:2px;">${m.resultBadge}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
     </div>
 
     <button class="btn-download-card" onclick="downloadPlayerCardImage('search-player-card-export', '${escapeHtml(foundPlayer.manager)}', this)">
-      <span>📸</span> تنزيل بطاقة الإحصائيات (صورة HD عالية الجودة)
+      <span>📸</span> تنزيل بطاقة الإحصائيات مع المباريات (صورة HD عالية الجودة)
     </button>
   `;
 }, 150);
@@ -1754,41 +1881,38 @@ function openPlayerModal(playerName) {
             <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
           </div>
         </div>
+
+        <!-- Embedded Player Matches List Inside Export Card -->
+        <div style="border-top:1px solid rgba(255,215,0,0.25); padding-top:14px; margin-top:14px;">
+          <h4 style="font-size:0.95rem; font-weight:900; color:var(--gold-primary); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <span>⚽</span> سجل جميع مواجهات ومباريات اللاعب بالبطولة (${playerMatches.length}):
+          </h4>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${playerMatches.map(m => `
+              <div style="background:rgba(15, 16, 24, 0.85); border:1px solid rgba(255,215,0,0.3); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="flex:1;">
+                  <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:800;">📍 ${escapeHtml(m.stage)}</div>
+                  <div style="font-size:0.9rem; font-weight:800; color:#fff; margin-top:2px;">
+                    👤 ${escapeHtml(m.home)} <span style="color:var(--gold-primary); font-size:0.8rem;">ضد</span> 👤 ${escapeHtml(m.away)}
+                  </div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-size:1.1rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.15); padding:3px 12px; border-radius:6px; border:1px solid var(--border-gold);">
+                    ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
+                  </div>
+                  <div style="font-size:0.72rem; margin-top:2px;">${m.resultBadge}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
       </div>
 
       <!-- HD Image Download Button -->
       <button class="btn-download-card" onclick="downloadPlayerCardImage('modal-player-card-export', '${escapeHtml(player.manager)}', this)">
-        <span>📸</span> تنزيل بطاقة الإحصائيات (صورة HD عالية الجودة)
+        <span>📸</span> تنزيل بطاقة الإحصائيات مع المباريات (صورة HD عالية الجودة)
       </button>
-
-      <!-- Matches History Header -->
-      <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:18px;">
-        <h4 style="font-size:1rem; font-weight:900; color:var(--gold-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <span>⚽</span> جميع مواجهات ومباريات اللاعب بالبطولة (${playerMatches.length}):
-        </h4>
-
-        <!-- Match History List -->
-        <div style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-left:4px;">
-          ${playerMatches.map(m => `
-            <div style="background:var(--bg-card); border:1px solid var(--border-gold); border-radius:var(--radius-sm); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
-              <div style="flex:1;">
-                <div style="font-size:0.78rem; color:var(--gold-primary); font-weight:800;">📍 ${escapeHtml(m.stage)}</div>
-                <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span class="player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
-                  <span style="color:var(--gold-primary); font-size:0.82rem; font-weight:900;">ضد</span>
-                  <span class="player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
-                </div>
-              </div>
-              <div style="text-align:center;">
-                <div style="font-size:1.15rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.15); padding:4px 14px; border-radius:8px; border:1px solid var(--border-gold);">
-                  ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
-                </div>
-                <div style="font-size:0.75rem; margin-top:3px;">${m.resultBadge}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
     </div>
   `;
 

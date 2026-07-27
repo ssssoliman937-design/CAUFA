@@ -63,6 +63,29 @@ body {
   background-attachment: fixed;
 }
 
+.player-clickable {
+  cursor: pointer;
+  transition: var(--transition);
+}
+.player-clickable:hover {
+  color: var(--gold-primary) !important;
+  text-decoration: underline;
+}
+
+.table-scroll-hint {
+  display: none;
+  font-size: 0.74rem;
+  color: var(--gold-primary);
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+@media (max-width: 767px) {
+  .table-scroll-hint {
+    display: block;
+  }
+}
+
 /* Network Online / Offline Status Alert Bar */
 .network-offline-bar {
   background: linear-gradient(90deg, #dc2626, #ef4444);

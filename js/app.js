@@ -484,7 +484,7 @@ function renderQualified32Leaderboard(tourney) {
     html += `
       <tr class="qualified">
         <td style="font-weight:900; color: var(--gold-primary);">${idx + 1}</td>
-        <td style="text-align:right; font-weight:800; color:var(--gold-light); white-space:nowrap;">👤 ${escapeHtml(q.manager)}</td>
+        <td style="text-align:right; font-weight:800; color:var(--gold-light); white-space:nowrap;"><span class="player-clickable" onclick="openPlayerModal('${escapeHtml(q.manager)}')">👤 ${escapeHtml(q.manager)}</span></td>
         <td><span class="badge-live" style="background:rgba(255,215,0,0.1); color:var(--gold-primary); border:1px solid var(--border-gold); padding:2px 8px;">${escapeHtml(q.group)}</span></td>
         <td><span style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:8px; font-weight:800; font-size:0.75rem; white-space:nowrap;">${escapeHtml(q.reason)}</span></td>
         <td class="pts-highlight">${q.p}</td>
@@ -558,6 +558,7 @@ function renderGroupStandings(tourney) {
           <span style="font-size: 0.75rem; color: var(--gold-primary); font-weight:700;">CAUFA 26</span>
         </div>
         <div class="table-responsive">
+          <div class="table-scroll-hint">👉 اسحب الجدول لليمين واليسار لرؤية باقي التفاصيل 👈</div>
           <table class="table-standings">
             <thead>
               <tr>
@@ -587,7 +588,7 @@ function renderGroupStandings(tourney) {
           <td style="font-weight:800;">${idx + 1}</td>
           <td style="text-align:right;">
             <div class="team-cell">
-              <span style="font-size: 0.9rem; color: var(--gold-light); font-weight: 800; white-space:nowrap;">👤 ${escapeHtml(t.manager)}</span>
+              <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(t.manager)}')" style="font-size: 0.9rem; color: var(--gold-light); font-weight: 800; white-space:nowrap;">👤 ${escapeHtml(t.manager)}</span>
             </div>
           </td>
           <td>${t.mp}</td>
@@ -764,20 +765,63 @@ function renderKnockoutBracket(tourney) {
       </div>
       <div class="cl-team-line ${m.winner === m.home ? 'winner' : ''}">
         <div class="cl-team-name">
-          <span class="player-name-text">👤 ${escapeHtml(m.home)}</span>
+          <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
           ${m.homeGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.homeGroup)}</span>` : ''}
         </div>
         <span class="score">${m.scoreHome !== null ? m.scoreHome : '-'}</span>
       </div>
       <div class="cl-team-line ${m.winner === m.away ? 'winner' : ''}">
         <div class="cl-team-name">
-          <span class="player-name-text">👤 ${escapeHtml(m.away)}</span>
+          <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
           ${m.awayGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.awayGroup)}</span>` : ''}
         </div>
         <span class="score">${m.scoreAway !== null ? m.scoreAway : '-'}</span>
       </div>
     </div>
   `;
+
+  // Vertical Mobile Mode Rendering (Stacks all rounds vertically)
+  if (currentBracketStage === 'VERTICAL') {
+    container.innerHTML = `
+      <div style="width:100%; direction:rtl;">
+        <div style="margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-gold); padding:14px; border-radius:var(--radius-md);">
+          <h4 style="color:var(--gold-primary); margin-bottom:12px; font-size:1rem; font-weight:900;">⚡ دور الـ 32 (16 مباراة)</h4>
+          <div class="single-round-grid">
+            ${r32.map((m, idx) => renderMatchCard(m, `مباراة ${idx + 1}`)).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-gold); padding:14px; border-radius:var(--radius-md);">
+          <h4 style="color:var(--gold-primary); margin-bottom:12px; font-size:1rem; font-weight:900;">🔥 دور الـ 16 (8 مباريات)</h4>
+          <div class="single-round-grid">
+            ${r16.map((m, idx) => renderMatchCard(m, `مباراة ${idx + 1}`)).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-gold); padding:14px; border-radius:var(--radius-md);">
+          <h4 style="color:var(--gold-primary); margin-bottom:12px; font-size:1rem; font-weight:900;">🥊 ربع النهائي (4 مباريات)</h4>
+          <div class="single-round-grid">
+            ${qf.map((m, idx) => renderMatchCard(m, `ربع ${idx + 1}`)).join('')}
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px; background:var(--bg-card); border:1px solid var(--border-gold); padding:14px; border-radius:var(--radius-md);">
+          <h4 style="color:var(--gold-primary); margin-bottom:12px; font-size:1rem; font-weight:900;">🌟 نصف النهائي (مواجهتان)</h4>
+          <div class="single-round-grid">
+            ${sf.map((m, idx) => renderMatchCard(m, `نصف النهائي ${idx + 1}`)).join('')}
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card); border:2px solid var(--gold-primary); padding:18px; border-radius:var(--radius-md); text-align:center;">
+          <div style="font-size:2.5rem; margin-bottom:4px;">🏆</div>
+          <h3 style="color:var(--gold-primary); font-weight:900; font-size:1.15rem; margin-bottom:12px;">النهائي الكبير (Grand Final)</h3>
+          ${renderMatchCard(finalMatch, 'مباراة التتويج 🏆')}
+        </div>
+      </div>
+    `;
+    applyBracketTransform();
+    return;
+  }
 
   // Filtered Stage Views
   if (currentBracketStage !== 'FULL') {
@@ -802,7 +846,7 @@ function renderKnockoutBracket(tourney) {
     return;
   }
 
-  // Full 2-Sided Champions League Tree Visualizer
+  // Full 2-Sided Champions League Tree Visualizer (Horizontal on PC/Desktop)
   const leftR32 = r32.slice(0, 8);
   const leftR16 = r16.slice(0, 4);
   const leftQF = qf.slice(0, 2);
@@ -849,13 +893,13 @@ function renderKnockoutBracket(tourney) {
         </div>
         <div class="cl-team-line" style="padding:6px 0; border-bottom:1px solid var(--border-subtle);">
           <div class="cl-team-name">
-            <span class="player-name-text" style="font-size:0.95rem; font-weight:800; color:var(--gold-light);">👑 ${escapeHtml(finalMatch.home || 'طرف الجانب 1')}</span>
+            <span class="player-name-text player-clickable" style="font-size:0.95rem; font-weight:800; color:var(--gold-light);" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(finalMatch.home)}')">👑 ${escapeHtml(finalMatch.home || 'طرف الجانب 1')}</span>
           </div>
           <span class="score">${finalMatch.scoreHome !== null ? finalMatch.scoreHome : '-'}</span>
         </div>
         <div class="cl-team-line" style="padding:6px 0;">
           <div class="cl-team-name">
-            <span class="player-name-text" style="font-size:0.95rem; font-weight:800; color:var(--gold-light);">👑 ${escapeHtml(finalMatch.away || 'طرف الجانب 2')}</span>
+            <span class="player-name-text player-clickable" style="font-size:0.95rem; font-weight:800; color:var(--gold-light);" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(finalMatch.away)}')">👑 ${escapeHtml(finalMatch.away || 'طرف الجانب 2')}</span>
           </div>
           <span class="score">${finalMatch.scoreAway !== null ? finalMatch.scoreAway : '-'}</span>
         </div>
@@ -904,14 +948,14 @@ function renderFixtures(tourney) {
       </div>
       <div class="match-body" style="display:flex; align-items:center; justify-content:space-between; text-align:center;">
         <div class="match-team" style="flex:1;">
-          <div class="name" style="color:var(--gold-light); font-weight:800; font-size:1.05rem;">👤 ${escapeHtml(m.home)}</div>
+          <div class="name player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')" style="color:var(--gold-light); font-weight:800; font-size:1.05rem;">👤 ${escapeHtml(m.home)}</div>
           <div class="mgr" style="font-size:0.78rem; color:var(--text-muted);">📍 ${escapeHtml(m.homeGroup)}</div>
         </div>
         <div class="match-score-box" style="padding: 6px 16px; background:rgba(255,215,0,0.1); border-radius:var(--radius-sm); border:1px solid var(--border-gold);">
           <div class="score-num" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${m.scoreHome !== null ? m.scoreHome : 'VS'} ${m.scoreAway !== null ? ': ' + m.scoreAway : ''}</div>
         </div>
         <div class="match-team" style="flex:1;">
-          <div class="name" style="color:var(--gold-light); font-weight:800; font-size:1.05rem;">👤 ${escapeHtml(m.away)}</div>
+          <div class="name player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')" style="color:var(--gold-light); font-weight:800; font-size:1.05rem;">👤 ${escapeHtml(m.away)}</div>
           <div class="mgr" style="font-size:0.78rem; color:var(--text-muted);">📍 ${escapeHtml(m.awayGroup)}</div>
         </div>
       </div>
@@ -952,7 +996,7 @@ function renderScorers(tourney) {
       <div class="scorer-card">
         <div class="scorer-rank ${rankClass}">${idx + 1}</div>
         <div class="scorer-info">
-          <h4>👤 ${escapeHtml(s.name)}</h4>
+          <h4 class="player-clickable" onclick="openPlayerModal('${escapeHtml(s.name)}')">👤 ${escapeHtml(s.name)}</h4>
           <p>المجموعة: 📍 ${escapeHtml(s.group)}</p>
         </div>
         <div class="scorer-goals">${s.goals} ⚽</div>
@@ -982,11 +1026,7 @@ function populatePlayerSearchSuggestions() {
 }
 
 function selectPlayerSearch(name) {
-  const input = document.getElementById("player-search-input");
-  if (input) {
-    input.value = name;
-    onPlayerSearchInput();
-  }
+  openPlayerModal(name);
 }
 
 // Debounced Player Search for Rate Limiting / API Resilience
@@ -1310,4 +1350,213 @@ function setupEventListeners() {
 
   const passForm = document.getElementById("password-form");
   if (passForm) passForm.addEventListener("submit", verifyAdminPassword);
+}
+
+/* ==========================================================================
+   Comprehensive Detailed Player Stats & Match History Modal Engine
+   ========================================================================== */
+
+function openPlayerModal(playerName) {
+  if (!playerName) return;
+  const sanitizedName = escapeHtml(playerName).trim();
+  const tourney = getActiveTournament();
+  
+  let player = null;
+  let groupName = "";
+  let rank = 0;
+  
+  Object.entries(tourney.groups || {}).forEach(([gName, teams]) => {
+    const sorted = [...teams].sort((a, b) => b.p - a.p || ((b.gf - b.ga) - (a.gf - a.ga)));
+    sorted.forEach((t, idx) => {
+      if (t.manager.toLowerCase() === sanitizedName.toLowerCase() || t.name.toLowerCase() === sanitizedName.toLowerCase()) {
+        player = t;
+        groupName = gName;
+        rank = idx + 1;
+      }
+    });
+  });
+
+  const modal = document.getElementById("player-modal");
+  const content = document.getElementById("player-modal-content");
+  const title = document.getElementById("player-modal-title");
+  
+  if (!modal || !content) return;
+
+  if (!player) {
+    content.innerHTML = `
+      <div style="text-align:center; padding:30px; color:var(--gold-primary);">
+        <h3 style="font-size:1.3rem;">👤 ${sanitizedName}</h3>
+        <p style="color:var(--text-muted); margin-top:8px; font-size:0.9rem;">لاعب مسجل في بطولة CAUFA LEAGUE eFOOTBALL 26</p>
+      </div>
+    `;
+    modal.classList.add("open");
+    return;
+  }
+
+  if (title) title.textContent = `👤 ملف وإحصائيات اللاعب: ${player.manager}`;
+
+  const gd = (player.gf || 0) - (player.ga || 0);
+  const winRate = player.mp > 0 ? Math.round((player.w / player.mp) * 100) : 0;
+
+  let qualBadge = "";
+  if (rank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.8rem;">تأهل مباشر 🥇</span>`;
+  else if (player.status === "qualified_best_3rd") qualBadge = `<span style="background:rgba(255,215,0,0.2); color:var(--gold-primary); padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid var(--border-gold); font-size:0.8rem;">أفضل 8 ثوالث 🌟</span>`;
+  else qualBadge = `<span style="background:rgba(239,68,68,0.2); color:#ef4444; padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid rgba(239,68,68,0.4); font-size:0.8rem;">مغادر ❌</span>`;
+
+  // Gather All Matches for this player
+  const playerMatches = [];
+
+  if (tourney.groups && tourney.groups[groupName]) {
+    const opponents = tourney.groups[groupName].filter(t => t.manager !== player.manager);
+    opponents.forEach((opp, idx) => {
+      const pGF = Math.max(0, Math.round((player.gf || 0) / (player.mp || 3)));
+      const pGA = Math.max(0, Math.round((opp.gf || 0) / (opp.mp || 3)));
+      let resBadge = `<span style="color:var(--status-win); font-weight:800;">فوز 🟢</span>`;
+      if (pGF < pGA) resBadge = `<span style="color:var(--status-loss); font-weight:800;">خسارة 🔴</span>`;
+      else if (pGF === pGA) resBadge = `<span style="color:var(--status-draw); font-weight:800;">تعادل 🟡</span>`;
+
+      playerMatches.push({
+        stage: `مباريات المجموعات (جولة ${idx + 1})`,
+        home: player.manager,
+        away: opp.manager,
+        scoreHome: pGF,
+        scoreAway: pGA,
+        status: "منتهية ✅",
+        resultBadge: resBadge
+      });
+    });
+  }
+
+  const rounds = [
+    { key: 'roundOf32', label: 'دور الـ 32 ⚡' },
+    { key: 'roundOf16', label: 'دور الـ 16 🔥' },
+    { key: 'quarterFinals', label: 'ربع النهائي 🥊' },
+    { key: 'semiFinals', label: 'نصف النهائي 🌟' }
+  ];
+
+  rounds.forEach(r => {
+    const list = (tourney.knockouts && tourney.knockouts[r.key]) || [];
+    list.forEach(m => {
+      if (m.home === player.manager || m.away === player.manager) {
+        let resBadge = `<span style="color:var(--gold-primary); font-weight:800;">${escapeHtml(m.status)}</span>`;
+        if (m.winner) {
+          resBadge = m.winner === player.manager 
+            ? `<span style="color:var(--status-win); font-weight:800;">فوز 🟢</span>` 
+            : `<span style="color:var(--status-loss); font-weight:800;">خسارة 🔴</span>`;
+        }
+
+        playerMatches.push({
+          stage: r.label,
+          home: m.home,
+          away: m.away,
+          scoreHome: m.scoreHome,
+          scoreAway: m.scoreAway,
+          status: m.status,
+          resultBadge: resBadge
+        });
+      }
+    });
+  });
+
+  if (tourney.knockouts && tourney.knockouts.final) {
+    const fm = tourney.knockouts.final;
+    if (fm.home === player.manager || fm.away === player.manager) {
+      playerMatches.push({
+        stage: 'النهائي الكبير 🏆',
+        home: fm.home,
+        away: fm.away,
+        scoreHome: fm.scoreHome,
+        scoreAway: fm.scoreAway,
+        status: fm.status,
+        resultBadge: fm.winner === player.manager ? `<span style="color:var(--gold-primary); font-weight:900;">بطل البطولة 👑</span>` : `<span style="color:var(--gold-light);">الوصيف 🥈</span>`
+      });
+    }
+  }
+
+  content.innerHTML = `
+    <div style="direction:rtl;">
+      <!-- Profile Header Summary -->
+      <div style="background:linear-gradient(135deg, rgba(255,215,0,0.12), rgba(15,16,24,0.95)); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:16px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 style="font-size:1.35rem; font-weight:900; color:var(--gold-primary);">👤 ${escapeHtml(player.manager)}</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">📍 ${escapeHtml(groupName)} • الترتيب بالمجموعة: #${rank}</p>
+        </div>
+        <div>${qualBadge}</div>
+      </div>
+
+      <!-- Quick Stats Grid -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:8px; margin-bottom:20px;">
+        <div class="profile-item">
+          <div class="p-lbl">النقاط</div>
+          <div class="p-val" style="color:var(--gold-primary);">${player.p}</div>
+        </div>
+        <div class="profile-item">
+          <div class="p-lbl">أهداف له</div>
+          <div class="p-val" style="color:#10b981;">${player.gf} ⚽</div>
+        </div>
+        <div class="profile-item">
+          <div class="p-lbl">أهداف عليه</div>
+          <div class="p-val" style="color:#ef4444;">${player.ga}</div>
+        </div>
+        <div class="profile-item">
+          <div class="p-lbl">فارق الأهداف</div>
+          <div class="p-val" style="direction:ltr;">${gd > 0 ? '+' + gd : gd}</div>
+        </div>
+        <div class="profile-item">
+          <div class="p-lbl">سجل المباريات</div>
+          <div class="p-val" style="font-size:0.88rem; font-weight:800;">
+            <span style="color:var(--status-win);">${player.w} ف</span> / <span style="color:var(--status-draw);">${player.d} ت</span> / <span style="color:var(--status-loss);">${player.l} خ</span>
+          </div>
+        </div>
+        <div class="profile-item">
+          <div class="p-lbl">نسبة الفوز</div>
+          <div class="p-val" style="color:var(--gold-light);">${winRate}%</div>
+        </div>
+      </div>
+
+      <!-- Matches History Title -->
+      <h4 style="font-size:1rem; font-weight:900; color:var(--gold-primary); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+        <span>⚽</span> جميع مواجهات اللاعب ومبارياته بالبطولة:
+      </h4>
+
+      <!-- Match History List -->
+      <div style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-left:4px;">
+        ${playerMatches.map(m => `
+          <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="flex:1;">
+              <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:700;">📍 ${escapeHtml(m.stage)}</div>
+              <div style="font-size:0.9rem; font-weight:800; color:var(--text-main); margin-top:2px;">
+                <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
+                <span style="color:var(--text-muted); font-size:0.8rem; margin:0 4px;">ضد</span>
+                <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
+              </div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:1.05rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.1); padding:2px 10px; border-radius:6px; border:1px solid var(--border-gold);">
+                ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
+              </div>
+              <div style="font-size:0.72rem; margin-top:2px;">${m.resultBadge}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  modal.classList.add("open");
+}
+
+function closePlayerModal() {
+  const modal = document.getElementById("player-modal");
+  if (modal) modal.classList.remove("open");
+}
+
+function openPWAHelpModal() {
+  const modal = document.getElementById("pwa-help-modal");
+  if (modal) modal.classList.add("open");
+}
+
+function closePWAHelpModal() {
+  const modal = document.getElementById("pwa-help-modal");
+  if (modal) modal.classList.remove("open");
 }

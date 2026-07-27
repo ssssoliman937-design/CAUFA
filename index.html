@@ -193,7 +193,8 @@
 
       <!-- Stage View Filters -->
       <div class="filter-pills" id="bracket-stage-pills" style="margin-bottom: 15px;">
-        <button class="pill-btn active" onclick="switchBracketStageView('FULL', this)">🏆 الشجرة الكاملة</button>
+        <button class="pill-btn active" id="btn-stage-vertical" onclick="switchBracketStageView('VERTICAL', this)">📱 العرض الرأسي (بالطول)</button>
+        <button class="pill-btn" id="btn-stage-full" onclick="switchBracketStageView('FULL', this)">💻 الشجرة التفاعلية (بالعرض)</button>
         <button class="pill-btn" onclick="switchBracketStageView('R32', this)">⚡ دور الـ 32</button>
         <button class="pill-btn" onclick="switchBracketStageView('R16', this)">🔥 دور الـ 16</button>
         <button class="pill-btn" onclick="switchBracketStageView('QF', this)">🥊 ربع النهائي</button>
@@ -374,6 +375,51 @@
           🚪 خروج
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Detailed Player Stats & Match History -->
+  <div class="modal-overlay" id="player-modal">
+    <div class="modal-box" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3 id="player-modal-title" style="color: var(--gold-primary);">👤 ملف وإحصائيات اللاعب</h3>
+        <button class="btn-close" onclick="closePlayerModal()">&times;</button>
+      </div>
+      <div id="player-modal-content">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 6: PWA Mobile Install Guide -->
+  <div class="modal-overlay" id="pwa-help-modal">
+    <div class="modal-box" style="max-width: 480px; text-align: center;">
+      <div class="modal-header" style="justify-content: center;">
+        <h3 style="color: var(--gold-primary);">📲 طريقة تثبيت CAUFA LEAGUE كـ تطبيق على هاتفك</h3>
+        <button class="btn-close" onclick="closePWAHelpModal()">&times;</button>
+      </div>
+      <div style="padding: 10px 0; text-align: right; direction: rtl;">
+        <div style="background: rgba(255,215,0,0.1); border: 1px solid var(--border-gold); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px;">
+          <h4 style="color: var(--gold-primary); margin-bottom: 6px;">📱 على آيفون (iPhone / Safari):</h4>
+          <ol style="margin-right: 20px; font-size: 0.88rem; color: var(--text-main); line-height: 1.7;">
+            <li>اضغط زر المشاركة <strong style="color: var(--gold-primary);">⎘ (Share)</strong> بأسفل متصفح Safari.</li>
+            <li>اختر <strong style="color: var(--gold-primary);">'إضافة إلى الشاشة الرئيسية' (Add to Home Screen)</strong>.</li>
+            <li>اضغط <strong style="color: var(--gold-primary);">'إضافة' (Add)</strong> بالأعلى لتجد تطبيق البطولة على شاشة هاتفك فوراً!</li>
+          </ol>
+        </div>
+
+        <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: var(--radius-md); padding: 14px;">
+          <h4 style="color: var(--cyan-accent); margin-bottom: 6px;">🤖 على أندرويد (Android / Chrome):</h4>
+          <ol style="margin-right: 20px; font-size: 0.88rem; color: var(--text-main); line-height: 1.7;">
+            <li>اضغط القائمة <strong style="color: var(--cyan-accent);">⋮ (الثلاث نقاط)</strong> بأعلى المتصفح.</li>
+            <li>اختر <strong style="color: var(--cyan-accent);">'تثبيت التطبيق' (Install App)</strong> أو 'الإضافة للشاشة'.</li>
+            <li>سيتم تثبيت تطبيق CAUFA LEAGUE كـ تطبيق مجاني خفيف فوراً!</li>
+          </ol>
+        </div>
+      </div>
+      <button class="btn-primary" style="width: 100%; margin-top: 10px; padding: 12px;" onclick="closePWAHelpModal()">
+        تم، فهمت ذلك 👍
+      </button>
     </div>
   </div>
 

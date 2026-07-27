@@ -12,13 +12,14 @@
 function initNetworkListeners() {
   const badge = document.getElementById('network-status-badge');
   const banner = document.getElementById('network-offline-banner');
+  const isGitHubPages = window.location.hostname.endsWith('github.io');
 
   function updateStatus() {
     const isOnline = navigator.onLine;
     if (isOnline) {
       if (badge) {
         badge.className = 'network-badge online';
-        badge.innerHTML = '🟢 متصل ومُحدث';
+        badge.innerHTML = isGitHubPages ? '⚡ GitHub Pages • متصل' : '🟢 متصل ومُحدث';
       }
       if (banner) banner.style.display = 'none';
       updateLastUpdatedTimestamp();

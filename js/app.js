@@ -624,7 +624,15 @@ function renderGroupStandings(tourney) {
    5. INTERACTIVE PAN & ZOOM CANVAS FOR CHAMPIONS LEAGUE BRACKET TREE
    ========================================================================== */
 
-let bracketZoom = 0.85;
+function getDefaultZoomForDevice() {
+  const w = window.innerWidth;
+  if (w <= 480) return 0.52;
+  if (w <= 768) return 0.65;
+  if (w <= 1024) return 0.78;
+  return 0.85;
+}
+
+let bracketZoom = getDefaultZoomForDevice();
 let bracketPanX = 0;
 let bracketPanY = 0;
 let isPanning = false;
@@ -650,7 +658,7 @@ function zoomBracket(delta) {
 }
 
 function resetBracketZoom() {
-  bracketZoom = 0.85;
+  bracketZoom = getDefaultZoomForDevice();
   bracketPanX = 0;
   bracketPanY = 0;
   applyBracketTransform();

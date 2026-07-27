@@ -394,6 +394,10 @@
       btn.classList.add('active');
       const target = document.getElementById(tabId);
       if (target) target.style.display = 'block';
+      
+      try {
+        btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      } catch(e) {}
     }
   </script>
 </body>

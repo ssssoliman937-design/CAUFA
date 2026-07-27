@@ -777,8 +777,124 @@ header.header-nav {
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
 }
 
-/* Responsive Mobile Rules */
-@media (max-width: 768px) {
+/* Player Search & Profile Styles */
+.player-search-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.player-search-input {
+  width: 100%;
+  background: rgba(10, 11, 16, 0.9);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 700;
+  outline: none;
+  transition: var(--transition);
+  margin-top: 8px;
+}
+
+.player-search-input:focus {
+  border-color: var(--gold-primary);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.25);
+}
+
+.player-profile-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.profile-item {
+  background: rgba(10, 11, 16, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-align: center;
+}
+
+.profile-item .p-lbl {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.profile-item .p-val {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM: MOBILE (PHONES) & TABLET (iPAD)
+   ========================================================================== */
+
+/* Tablet & iPad Responsive Media Query (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .app-container {
+    padding: 0 18px 50px 18px;
+  }
+
+  .hero-banner {
+    padding: 22px;
+    gap: 15px;
+  }
+
+  .hero-info h2 {
+    font-size: 1.5rem;
+  }
+
+  .hero-stats {
+    gap: 8px;
+  }
+
+  .stat-card {
+    min-width: 95px;
+    padding: 10px 12px;
+  }
+
+  .groups-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .fixtures-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .scorers-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .single-round-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .modal-box {
+    max-width: 720px;
+    padding: 20px;
+  }
+}
+
+/* Mobile Devices Responsive Rules (< 768px) */
+@media (max-width: 767px) {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .app-container {
     padding: 0 10px 40px 10px;
   }
@@ -788,10 +904,8 @@ header.header-nav {
   }
 
   .header-content {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
     padding: 0 10px;
+    gap: 8px;
   }
 
   .brand-logo {
@@ -808,24 +922,33 @@ header.header-nav {
   }
 
   .nav-controls {
-    gap: 6px;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
-  .btn-archive, .btn-admin {
-    padding: 6px 10px;
+  .network-badge {
+    font-size: 0.68rem;
+    padding: 3px 7px;
+  }
+
+  .btn-archive, .btn-admin, .btn-primary {
+    padding: 7px 10px;
     font-size: 0.78rem;
+    min-height: 38px;
     border-radius: var(--radius-sm);
   }
 
   .hero-banner {
     flex-direction: column;
-    padding: 16px;
-    margin: 12px 0 18px 0;
+    padding: 16px 14px;
+    margin: 12px 0 16px 0;
     text-align: center;
+    gap: 14px;
   }
 
   .hero-info h2 {
-    font-size: 1.35rem;
+    font-size: 1.28rem;
     justify-content: center;
   }
 
@@ -835,6 +958,7 @@ header.header-nav {
 
   .hero-stats {
     width: 100%;
+    display: flex;
     justify-content: space-between;
     gap: 6px;
   }
@@ -842,11 +966,11 @@ header.header-nav {
   .stat-card {
     min-width: 0;
     flex: 1;
-    padding: 8px 6px;
+    padding: 8px 4px;
   }
 
   .stat-card .val {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
 
   .stat-card .lbl {
@@ -854,13 +978,16 @@ header.header-nav {
   }
 
   .tabs-bar {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     padding: 4px;
+    gap: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .tab-btn {
-    padding: 8px 12px;
+    padding: 9px 12px;
     font-size: 0.8rem;
+    min-height: 42px;
   }
 
   .btn-print-tab {
@@ -873,42 +1000,97 @@ header.header-nav {
   }
 
   .group-header {
-    padding: 10px 14px;
+    padding: 10px 12px;
   }
 
   .group-header h3 {
     font-size: 0.95rem;
   }
 
+  .table-responsive {
+    position: relative;
+    border-radius: var(--radius-sm);
+  }
+
   .table-standings {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    min-width: 380px;
   }
 
   .table-standings th, .table-standings td {
-    padding: 7px 4px;
+    padding: 7px 3px;
   }
 
-  .bracket-wrapper {
-    min-height: 520px;
-    padding: 15px 8px;
+  .fixtures-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .scorers-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .single-round-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
-}
 
-@media (max-width: 480px) {
-  .hero-info h2 {
-    font-size: 1.2rem;
+  .player-profile-card {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 14px;
+    gap: 10px;
   }
-  
-  .section-title {
-    font-size: 1.05rem;
+
+  .profile-item {
+    padding: 10px 8px;
+  }
+
+  .profile-item .p-val {
+    font-size: 1.1rem;
+  }
+
+  .bracket-wrapper {
+    min-height: 480px;
+    padding: 12px 6px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
   }
 
   .modal-box {
-    padding: 16px;
+    padding: 16px 12px;
+    max-height: 92vh;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* Extra Small Mobile Devices (< 420px) */
+@media (max-width: 420px) {
+  .hero-info h2 {
+    font-size: 1.15rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .player-profile-card {
+    grid-template-columns: 1fr;
+  }
+
+  .match-body {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .match-team .name {
+    font-size: 0.95rem !important;
+  }
+
+  .match-score-box {
+    padding: 4px 12px !important;
   }
 }
 

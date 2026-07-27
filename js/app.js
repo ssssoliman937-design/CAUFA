@@ -47,17 +47,55 @@ function updateLastUpdatedTimestamp() {
 }
 
 /**
- * PWA Installation & Service Worker Registration
+ * PWA Installation & Service Worker Auto-Update Engine
+ * Guarantees fresh updates & immediate version reloading
  */
 let deferredPWAInstallPrompt = null;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('CAUFA PWA Service Worker Registered:', reg.scope))
+      .then((reg) => {
+        console.log('CAUFA PWA Service Worker Registered:', reg.scope);
+        // Force immediate check for Service Worker update on load
+        reg.update();
+
+        reg.addEventListener('updatefound', () => {
+          const installingWorker = reg.installing;
+          if (installingWorker) {
+            installingWorker.addEventListener('statechange', () => {
+              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('New version found! Activating update immediately...');
+                installingWorker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+      })
       .catch((err) => console.warn('ServiceWorker Registration Error:', err));
   });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      console.log('Service Worker updated! Reloading application...');
+      window.location.reload();
+    }
+  });
 }
+
+// Auto re-check for new app updates whenever user switches back to the tab/app
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg) reg.update();
+      });
+    }
+    updateLastUpdatedTimestamp();
+  }
+});
 
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -1029,6 +1067,130 @@ function selectPlayerSearch(name) {
   openPlayerModal(name);
 }
 
+/* ==========================================================================
+   Player Rankings Engine (Overall Rank, Scorer Rank & HD Image Exporter)
+   ========================================================================== */
+
+/**
+ * Calculate Player Overall Tournament Rank (#1 to #48)
+ */
+function getPlayerOverallRank(tourney, playerName) {
+  if (!tourney || !tourney.groups) return { rank: '-', total: 48 };
+
+  const rawTarget = String(playerName || "").trim().toLowerCase();
+  const allPlayers = [];
+
+  Object.entries(tourney.groups).forEach(([gName, teams]) => {
+    teams.forEach(t => {
+      const gd = (t.gf || 0) - (t.ga || 0);
+      allPlayers.push({
+        manager: t.manager || t.name,
+        p: t.p || 0,
+        gf: t.gf || 0,
+        ga: t.ga || 0,
+        gd: gd,
+        w: t.w || 0,
+        mp: t.mp || 0,
+        group: gName
+      });
+    });
+  });
+
+  allPlayers.sort((a, b) => {
+    if (b.p !== a.p) return b.p - a.p;
+    if (b.gd !== a.gd) return b.gd - a.gd;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return b.w - a.w;
+  });
+
+  const index = allPlayers.findIndex(p => (p.manager || "").trim().toLowerCase() === rawTarget);
+  return {
+    rank: index !== -1 ? index + 1 : '-',
+    total: allPlayers.length
+  };
+}
+
+/**
+ * Calculate Player Top Scorer Rank (#1 to #48)
+ */
+function getPlayerScorerRank(tourney, playerName) {
+  if (!tourney || !tourney.groups) return { rank: '-', total: 48 };
+
+  const rawTarget = String(playerName || "").trim().toLowerCase();
+  const scorers = [];
+
+  Object.values(tourney.groups).forEach(teams => {
+    teams.forEach(t => {
+      scorers.push({
+        manager: t.manager || t.name,
+        gf: t.gf || 0,
+        mp: t.mp || 0
+      });
+    });
+  });
+
+  scorers.sort((a, b) => {
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return a.mp - b.mp;
+  });
+
+  const index = scorers.findIndex(p => (p.manager || "").trim().toLowerCase() === rawTarget);
+  return {
+    rank: index !== -1 ? index + 1 : '-',
+    total: scorers.length
+  };
+}
+
+/**
+ * Download High Quality PNG Image of Player Stats Card using HTML2Canvas
+ */
+async function downloadPlayerCardImage(cardElementId, playerName, btnEl) {
+  const card = document.getElementById(cardElementId);
+  if (!card) return;
+
+  const originalBtnText = btnEl ? btnEl.innerHTML : '';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.innerHTML = `<span>⏳</span> جاري توليد الصورة عالية الجودة...`;
+  }
+
+  try {
+    if (typeof html2canvas === 'undefined') {
+      alert("تعذر تحميل مكتبة تصدير الصور. يرجى التأكد من الاتصال بالإنترنت!");
+      if (btnEl) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = originalBtnText;
+      }
+      return;
+    }
+
+    const canvas = await html2canvas(card, {
+      scale: 3,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#0d0e17",
+      logging: false
+    });
+
+    const dataUrl = canvas.toDataURL("image/png");
+    const link = document.createElement("a");
+    const safeName = String(playerName || "Player").replace(/[^a-zA-Z0-9أ-ي]/g, "_");
+    link.download = `CAUFA_Stats_${safeName}.png`;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    console.error("Card Image Export Error:", err);
+    alert("حدث خطأ أثناء حفظ الصورة. يرجى المحاولة مرة أخرى!");
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.innerHTML = originalBtnText;
+    }
+  }
+}
+
 // Debounced Player Search for Rate Limiting / API Resilience
 const onPlayerSearchInput = debounce(function() {
   const query = (document.getElementById("player-search-input").value || "").trim().toLowerCase();
@@ -1063,55 +1225,79 @@ const onPlayerSearchInput = debounce(function() {
 
   const gd = (foundPlayer.gf || 0) - (foundPlayer.ga || 0);
   const winRate = foundPlayer.mp > 0 ? Math.round((foundPlayer.w / foundPlayer.mp) * 100) : 0;
+  const overallRank = getPlayerOverallRank(tourney, foundPlayer.manager);
+  const scorerRank = getPlayerScorerRank(tourney, foundPlayer.manager);
 
   let qualBadge = "";
-  if (foundRank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:6px 16px; border-radius:12px; font-weight:800; border:1px solid rgba(16,185,129,0.4);">تأهل مباشر 🥇</span>`;
-  else if (foundPlayer.status === "qualified_best_3rd") qualBadge = `<span style="background:rgba(255,215,0,0.2); color:var(--gold-primary); padding:6px 16px; border-radius:12px; font-weight:800; border:1px solid var(--border-gold);">متأهل ضمن أفضل 8 ثوالث 🌟</span>`;
-  else qualBadge = `<span style="background:rgba(239,68,68,0.2); color:#ef4444; padding:6px 16px; border-radius:12px; font-weight:800; border:1px solid rgba(239,68,68,0.4);">مغادر للبطولة ❌</span>`;
+  if (foundRank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.85rem;">تأهل مباشر 🥇</span>`;
+  else if (foundPlayer.status === "qualified_best_3rd") qualBadge = `<span style="background:rgba(255,215,0,0.2); color:var(--gold-primary); padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid var(--border-gold); font-size:0.85rem;">أفضل 8 ثوالث 🌟</span>`;
+  else qualBadge = `<span style="background:rgba(239,68,68,0.2); color:#ef4444; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(239,68,68,0.4); font-size:0.85rem;">مغادر للبطولة ❌</span>`;
 
   container.innerHTML = `
-    <div class="player-profile-card">
-      <div style="grid-column: 1/-1; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:15px; flex-wrap:wrap; gap:10px;">
-        <div>
-          <h3 style="font-size:1.8rem; font-weight:900; color:var(--gold-primary);">👤 ${escapeHtml(foundPlayer.manager)}</h3>
-          <span style="font-size:0.9rem; color:var(--text-muted);">📍 ${escapeHtml(foundGroup)} • الترتيب بالمجموعة: #${foundRank}</span>
+    <div class="player-export-card" id="search-player-card-export">
+      <div class="export-card-header">
+        <div class="export-card-brand">
+          <img src="assets/logo.png" alt="CAUFA Logo" />
+          <div class="export-card-title">
+            <h3>بطاقة إحصائيات اللاعب</h3>
+            <span>CAUFA LEAGUE eFOOTBALL 26</span>
+          </div>
         </div>
         <div>${qualBadge}</div>
       </div>
 
-      <div class="profile-item">
-        <div class="p-lbl">النقاط الإجمالية</div>
-        <div class="p-val">${foundPlayer.p}</div>
-      </div>
-      <div class="profile-item">
-        <div class="p-lbl">الأهداف المسجلة (له)</div>
-        <div class="p-val" style="color:var(--gold-primary);">${foundPlayer.gf} ⚽</div>
-      </div>
-      <div class="profile-item">
-        <div class="p-lbl">الأهداف المستقبلة (عليه)</div>
-        <div class="p-val" style="color:var(--text-muted);">${foundPlayer.ga}</div>
-      </div>
-      <div class="profile-item">
-        <div class="p-lbl">فارق الأهداف</div>
-        <div class="p-val" style="direction:ltr;">${gd > 0 ? '+' + gd : gd}</div>
-      </div>
-      <div class="profile-item">
-        <div class="p-lbl">المباريات الملعوبة</div>
-        <div class="p-val">${foundPlayer.mp}</div>
-      </div>
-      <div class="profile-item">
-        <div class="p-lbl">سجل الانتصارات / التعادل / الخسارة</div>
-        <div class="p-val" style="font-size:1rem;">
-          <span style="color:var(--status-win);">${foundPlayer.w} فوز</span> / 
-          <span style="color:var(--status-draw);">${foundPlayer.d} تعادل</span> / 
-          <span style="color:var(--status-loss);">${foundPlayer.l} خسارة</span>
+      <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2 style="font-size:1.7rem; font-weight:900; color:var(--gold-primary); margin:0;">👤 ${escapeHtml(foundPlayer.manager)}</h2>
+          <span style="font-size:0.88rem; color:var(--text-muted);">📍 ${escapeHtml(foundGroup)}</span>
+        </div>
+        
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="rank-badge-pill overall">
+            <span>🏆</span> ترتيب البطولة الإجمالي: <strong>#${overallRank.rank}</strong> من ${overallRank.total}
+          </div>
+          <div class="rank-badge-pill scorer">
+            <span>⚽</span> ترتيب الهدافين: <strong>#${scorerRank.rank}</strong>
+          </div>
+          <div class="rank-badge-pill group">
+            <span>📍</span> ترتيب المجموعة: <strong>#${foundRank}</strong>
+          </div>
         </div>
       </div>
-      <div class="profile-item">
-        <div class="p-lbl">نسبة الفوز (%)</div>
-        <div class="p-val" style="color:var(--gold-light);">${winRate}%</div>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-bottom:12px;">
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">النقاط الإجمالية</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${foundPlayer.p}</div>
+        </div>
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">أهداف (له)</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#10b981;">${foundPlayer.gf} ⚽</div>
+        </div>
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">أهداف (عليه)</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#ef4444;">${foundPlayer.ga}</div>
+        </div>
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">فارق الأهداف</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; direction:ltr; color:var(--gold-light);">${gd > 0 ? '+' + gd : gd}</div>
+        </div>
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">المباريات (ف/ت/خ)</div>
+          <div class="p-val" style="font-size:0.92rem; font-weight:800; margin-top:2px;">
+            <span style="color:var(--status-win);">${foundPlayer.w}ف</span> / <span style="color:var(--status-draw);">${foundPlayer.d}ت</span> / <span style="color:var(--status-loss);">${foundPlayer.l}خ</span>
+          </div>
+        </div>
+        <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.75rem; color:var(--text-muted);">نسبة الفوز</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
+        </div>
       </div>
     </div>
+
+    <button class="btn-download-card" onclick="downloadPlayerCardImage('search-player-card-export', '${escapeHtml(foundPlayer.manager)}', this)">
+      <span>📸</span> تنزيل بطاقة الإحصائيات (صورة HD عالية الجودة)
+    </button>
   `;
 }, 150);
 
@@ -1148,12 +1334,18 @@ function switchTournament(id) {
 
 function openArchiveModal() {
   const modal = document.getElementById("archive-modal");
-  if (modal) modal.classList.add("open");
+  if (modal) {
+    modal.classList.add("open");
+    pushModalToHistory("archive-modal");
+  }
 }
 
 function closeArchiveModal() {
   const modal = document.getElementById("archive-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("archive-modal");
+  }
 }
 
 function openMatchDetail(matchId) {
@@ -1190,11 +1382,15 @@ function openMatchDetail(matchId) {
   `;
 
   modal.classList.add("open");
+  pushModalToHistory("match-modal");
 }
 
 function closeMatchModal() {
   const modal = document.getElementById("match-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("match-modal");
+  }
 }
 
 /* ==========================================================================
@@ -1216,12 +1412,16 @@ function openPasswordModal() {
     document.getElementById("admin-password-input").value = "";
     document.getElementById("password-error-msg").style.display = "none";
     modal.classList.add("open");
+    pushModalToHistory("password-modal");
   }
 }
 
 function closePasswordModal() {
   const modal = document.getElementById("password-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("password-modal");
+  }
 }
 
 async function verifyAdminPassword(e) {
@@ -1271,11 +1471,15 @@ function openAdminModal() {
   }
 
   modal.classList.add("open");
+  pushModalToHistory("admin-modal");
 }
 
 function closeAdminModal() {
   const modal = document.getElementById("admin-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("admin-modal");
+  }
 }
 
 function handleAdminScoreSave(e) {
@@ -1409,6 +1613,8 @@ function openPlayerModal(playerName) {
   const gd = (player.gf || 0) - (player.ga || 0);
   const winRate = player.mp > 0 ? Math.round((player.w / player.mp) * 100) : 0;
   const avgGoals = player.mp > 0 ? (player.gf / player.mp).toFixed(1) : 0;
+  const overallRank = getPlayerOverallRank(tourney, player.manager);
+  const scorerRank = getPlayerScorerRank(tourney, player.manager);
 
   let qualBadge = "";
   if (rank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.85rem;">تأهل مباشر 🥇</span>`;
@@ -1487,53 +1693,82 @@ function openPlayerModal(playerName) {
 
   content.innerHTML = `
     <div style="direction:rtl;">
-      <!-- Profile Header Summary -->
-      <div style="background:linear-gradient(135deg, rgba(255,215,0,0.15), rgba(15,16,24,0.98)); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:16px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; box-shadow: 0 4px 15px rgba(255,215,0,0.1);">
-        <div>
-          <h3 style="font-size:1.45rem; font-weight:900; color:var(--gold-primary); margin-bottom:2px;">👤 ${escapeHtml(player.manager)}</h3>
-          <p style="font-size:0.88rem; color:var(--text-muted);">📍 ${escapeHtml(groupName)} • الترتيب بالمجموعة: <strong style="color:var(--gold-primary);">#${rank}</strong></p>
+      <!-- Exportable HD Player Card Container -->
+      <div class="player-export-card" id="modal-player-card-export">
+        <div class="export-card-header">
+          <div class="export-card-brand">
+            <img src="assets/logo.png" alt="CAUFA Logo" />
+            <div class="export-card-title">
+              <h3>CAUFA LEAGUE eFOOTBALL 26</h3>
+              <span>بطاقة الإحصائيات الرسمية للاعب</span>
+            </div>
+          </div>
+          <div>${qualBadge}</div>
         </div>
-        <div>${qualBadge}</div>
-      </div>
 
-      <!-- Quick Stats Grid -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:10px; margin-bottom:22px;">
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">النقاط الإجمالية</div>
-          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${player.p}</div>
-        </div>
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف له</div>
-          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#10b981;">${player.gf} ⚽</div>
-        </div>
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف عليه</div>
-          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#ef4444;">${player.ga}</div>
-        </div>
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">فارق الأهداف</div>
-          <div class="p-val" style="font-size:1.3rem; font-weight:900; direction:ltr; color:var(--gold-light);">${gd > 0 ? '+' + gd : gd}</div>
-        </div>
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">سجل المباريات</div>
-          <div class="p-val" style="font-size:0.95rem; font-weight:800; margin-top:2px;">
-            <span style="color:var(--status-win);">${player.w} ف</span> / <span style="color:var(--status-draw);">${player.d} ت</span> / <span style="color:var(--status-loss);">${player.l} خ</span>
+        <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h3 style="font-size:1.65rem; font-weight:900; color:var(--gold-primary); margin:0;">👤 ${escapeHtml(player.manager)}</h3>
+            <span style="font-size:0.88rem; color:var(--text-muted);">📍 ${escapeHtml(groupName)}</span>
+          </div>
+          
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="rank-badge-pill overall">
+              <span>🏆</span> الترتيب الإجمالي: <strong>#${overallRank.rank}</strong> من ${overallRank.total}
+            </div>
+            <div class="rank-badge-pill scorer">
+              <span>⚽</span> ترتيب الهدافين: <strong>#${scorerRank.rank}</strong>
+            </div>
+            <div class="rank-badge-pill group">
+              <span>📍</span> الترتيب بالمجموعة: <strong>#${rank}</strong>
+            </div>
           </div>
         </div>
-        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
-          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">نسبة الفوز</div>
-          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
+
+        <!-- Quick Stats Grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(100px, 1fr)); gap:10px;">
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">النقاط الإجمالية</div>
+            <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${player.p}</div>
+          </div>
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف له</div>
+            <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#10b981;">${player.gf} ⚽</div>
+          </div>
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف عليه</div>
+            <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#ef4444;">${player.ga}</div>
+          </div>
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">فارق الأهداف</div>
+            <div class="p-val" style="font-size:1.3rem; font-weight:900; direction:ltr; color:var(--gold-light);">${gd > 0 ? '+' + gd : gd}</div>
+          </div>
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">سجل المباريات</div>
+            <div class="p-val" style="font-size:0.92rem; font-weight:800; margin-top:2px;">
+              <span style="color:var(--status-win);">${player.w}ف</span> / <span style="color:var(--status-draw);">${player.d}ت</span> / <span style="color:var(--status-loss);">${player.l}خ</span>
+            </div>
+          </div>
+          <div class="profile-item" style="background:rgba(255,215,0,0.06); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+            <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">نسبة الفوز</div>
+            <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
+          </div>
         </div>
       </div>
 
+      <!-- HD Image Download Button -->
+      <button class="btn-download-card" onclick="downloadPlayerCardImage('modal-player-card-export', '${escapeHtml(player.manager)}', this)">
+        <span>📸</span> تنزيل بطاقة الإحصائيات (صورة HD عالية الجودة)
+      </button>
+
       <!-- Matches History Header -->
-      <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:10px;">
+      <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:18px;">
         <h4 style="font-size:1rem; font-weight:900; color:var(--gold-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
           <span>⚽</span> جميع مواجهات ومباريات اللاعب بالبطولة (${playerMatches.length}):
         </h4>
 
         <!-- Match History List -->
-        <div style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-left:4px;">
+        <div style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-left:4px;">
           ${playerMatches.map(m => `
             <div style="background:var(--bg-card); border:1px solid var(--border-gold); border-radius:var(--radius-sm); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
               <div style="flex:1;">
@@ -1558,19 +1793,149 @@ function openPlayerModal(playerName) {
   `;
 
   modal.classList.add("open");
+  pushModalToHistory("player-modal");
 }
 
 function closePlayerModal() {
   const modal = document.getElementById("player-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("player-modal");
+  }
 }
 
 function openPWAHelpModal() {
   const modal = document.getElementById("pwa-help-modal");
-  if (modal) modal.classList.add("open");
+  if (modal) {
+    modal.classList.add("open");
+    pushModalToHistory("pwa-help-modal");
+  }
 }
 
 function closePWAHelpModal() {
   const modal = document.getElementById("pwa-help-modal");
-  if (modal) modal.classList.remove("open");
+  if (modal) {
+    modal.classList.remove("open");
+    popModalFromHistory("pwa-help-modal");
+  }
 }
+
+/* ==========================================================================
+   MOBILE BACK GESTURES & BROWSER HISTORY NAVIGATION ENGINE
+   ========================================================================== */
+
+let modalNavigationStack = [];
+let isPopStateDrivenAction = false;
+
+function pushModalToHistory(modalId) {
+  if (!modalNavigationStack.includes(modalId)) {
+    modalNavigationStack.push(modalId);
+    try {
+      history.pushState({ modalId: modalId, depth: modalNavigationStack.length }, '', '#' + modalId);
+    } catch (e) {}
+  }
+  updateFloatingBackButtonVisibility();
+}
+
+function popModalFromHistory(modalId) {
+  const index = modalNavigationStack.indexOf(modalId);
+  if (index !== -1) {
+    modalNavigationStack.splice(index, 1);
+  }
+  
+  if (!isPopStateDrivenAction && history.state && history.state.modalId === modalId) {
+    isPopStateDrivenAction = true;
+    history.back();
+    setTimeout(() => { isPopStateDrivenAction = false; }, 60);
+  }
+  updateFloatingBackButtonVisibility();
+}
+
+function updateFloatingBackButtonVisibility() {
+  const btn = document.getElementById("floating-back-btn");
+  if (!btn) return;
+
+  const anyModalOpen = modalNavigationStack.length > 0 || document.querySelector(".modal-overlay.open") !== null;
+  const isSubTabActive = window.currentActiveTabId && window.currentActiveTabId !== 'sec-groups';
+
+  if (anyModalOpen || isSubTabActive) {
+    btn.style.display = "inline-flex";
+  } else {
+    btn.style.display = "none";
+  }
+}
+
+function handleMobileBackClick() {
+  if (modalNavigationStack.length > 0) {
+    const topModalId = modalNavigationStack[modalNavigationStack.length - 1];
+    closeModalById(topModalId);
+    return;
+  }
+
+  const openModal = document.querySelector(".modal-overlay.open");
+  if (openModal) {
+    closeModalById(openModal.id);
+    return;
+  }
+
+  if (window.currentActiveTabId && window.currentActiveTabId !== 'sec-groups') {
+    const firstTabBtn = document.querySelector(".tab-btn");
+    if (typeof switchTab === 'function' && firstTabBtn) {
+      switchTab(firstTabBtn, 'sec-groups');
+    }
+  }
+}
+
+function closeModalById(modalId) {
+  if (modalId === 'archive-modal') closeArchiveModal();
+  else if (modalId === 'password-modal') closePasswordModal();
+  else if (modalId === 'match-modal') closeMatchModal();
+  else if (modalId === 'admin-modal') closeAdminModal();
+  else if (modalId === 'player-modal') closePlayerModal();
+  else if (modalId === 'pwa-help-modal') closePWAHelpModal();
+  else {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove("open");
+    updateFloatingBackButtonVisibility();
+  }
+}
+
+// Global Popstate Event Listener for Intercepting Phone Back Button & Gestures
+window.addEventListener('popstate', (event) => {
+  if (isPopStateDrivenAction) return;
+
+  isPopStateDrivenAction = true;
+
+  if (modalNavigationStack.length > 0) {
+    const topModalId = modalNavigationStack.pop();
+    const modalEl = document.getElementById(topModalId);
+    if (modalEl) modalEl.classList.remove("open");
+    updateFloatingBackButtonVisibility();
+    setTimeout(() => { isPopStateDrivenAction = false; }, 60);
+    return;
+  }
+
+  const openModal = document.querySelector(".modal-overlay.open");
+  if (openModal) {
+    openModal.classList.remove("open");
+    updateFloatingBackButtonVisibility();
+    setTimeout(() => { isPopStateDrivenAction = false; }, 60);
+    return;
+  }
+
+  if (window.currentActiveTabId && window.currentActiveTabId !== 'sec-groups') {
+    const firstTabBtn = document.querySelector(".tab-btn");
+    if (typeof switchTab === 'function' && firstTabBtn) {
+      switchTab(firstTabBtn, 'sec-groups');
+    }
+  }
+
+  setTimeout(() => { isPopStateDrivenAction = false; }, 60);
+});
+
+// Close modals when clicking backdrop
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("modal-overlay")) {
+    closeModalById(e.target.id);
+  }
+});

@@ -24,6 +24,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
+  <!-- HTML2Canvas CDN for HD Image Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <!-- Custom Design System -->
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -239,7 +242,10 @@
     <div class="modal-box">
       <div class="modal-header">
         <h3>🏛️ ذاكرة وأرشيف بطولات CAUFA LEAGUE</h3>
-        <button class="btn-close" onclick="closeArchiveModal()">&times;</button>
+        <div class="modal-header-actions">
+          <button class="btn-modal-back" onclick="closeArchiveModal()"><span>←</span> رجوع</button>
+          <button class="btn-close" onclick="closeArchiveModal()">&times;</button>
+        </div>
       </div>
       
       <div class="search-box">
@@ -255,8 +261,9 @@
   <!-- Modal 2: Admin Password Auth -->
   <div class="modal-overlay" id="password-modal">
     <div class="modal-box" style="max-width: 420px; text-align: center;">
-      <div class="modal-header" style="justify-content: center;">
+      <div class="modal-header" style="justify-content: space-between;">
         <h3 style="color: var(--gold-primary);">🔐 الدخول للوحة المنظم</h3>
+        <button class="btn-modal-back" onclick="closePasswordModal()"><span>←</span> رجوع</button>
       </div>
       
       <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">
@@ -289,7 +296,10 @@
     <div class="modal-box" style="max-width: 550px;">
       <div class="modal-header">
         <h3>⚽ تفاصيل المباراة</h3>
-        <button class="btn-close" onclick="closeMatchModal()">&times;</button>
+        <div class="modal-header-actions">
+          <button class="btn-modal-back" onclick="closeMatchModal()"><span>←</span> رجوع</button>
+          <button class="btn-close" onclick="closeMatchModal()">&times;</button>
+        </div>
       </div>
       <div id="match-modal-content">
         <!-- Rendered dynamically by app.js -->
@@ -302,7 +312,10 @@
     <div class="modal-box" style="max-width: 680px;">
       <div class="modal-header">
         <h3>⚙️ لوحة منظم البطولة (CAUFA Admin)</h3>
-        <button class="btn-close" onclick="closeAdminModal()">&times;</button>
+        <div class="modal-header-actions">
+          <button class="btn-modal-back" onclick="closeAdminModal()"><span>←</span> رجوع</button>
+          <button class="btn-close" onclick="closeAdminModal()">&times;</button>
+        </div>
       </div>
 
       <!-- Admin Sub Tabs Navigation -->
@@ -383,7 +396,10 @@
     <div class="modal-box" style="max-width: 680px;">
       <div class="modal-header">
         <h3 id="player-modal-title" style="color: var(--gold-primary);">👤 ملف وإحصائيات اللاعب</h3>
-        <button class="btn-close" onclick="closePlayerModal()">&times;</button>
+        <div class="modal-header-actions">
+          <button class="btn-modal-back" onclick="closePlayerModal()"><span>←</span> رجوع</button>
+          <button class="btn-close" onclick="closePlayerModal()">&times;</button>
+        </div>
       </div>
       <div id="player-modal-content">
         <!-- Rendered dynamically by app.js -->
@@ -394,9 +410,12 @@
   <!-- Modal 6: PWA Mobile Install Guide -->
   <div class="modal-overlay" id="pwa-help-modal">
     <div class="modal-box" style="max-width: 480px; text-align: center;">
-      <div class="modal-header" style="justify-content: center;">
-        <h3 style="color: var(--gold-primary);">📲 طريقة تثبيت CAUFA LEAGUE كـ تطبيق على هاتفك</h3>
-        <button class="btn-close" onclick="closePWAHelpModal()">&times;</button>
+      <div class="modal-header" style="justify-content: space-between;">
+        <h3 style="color: var(--gold-primary);">📲 تثبيت CAUFA LEAGUE</h3>
+        <div class="modal-header-actions">
+          <button class="btn-modal-back" onclick="closePWAHelpModal()"><span>←</span> رجوع</button>
+          <button class="btn-close" onclick="closePWAHelpModal()">&times;</button>
+        </div>
       </div>
       <div style="padding: 10px 0; text-align: right; direction: rtl;">
         <div style="background: rgba(255,215,0,0.1); border: 1px solid var(--border-gold); border-radius: var(--radius-md); padding: 14px; margin-bottom: 12px;">
@@ -423,6 +442,11 @@
     </div>
   </div>
 
+  <!-- Floating Mobile Back Button -->
+  <button id="floating-back-btn" class="floating-back-btn" onclick="handleMobileBackClick()" style="display: none;">
+    <span>←</span> رجوع
+  </button>
+
   <!-- Footer -->
   <footer>
     <div class="app-container">
@@ -441,6 +465,11 @@
       const target = document.getElementById(tabId);
       if (target) target.style.display = 'block';
       
+      window.currentActiveTabId = tabId;
+      if (typeof updateFloatingBackButtonVisibility === 'function') {
+        updateFloatingBackButtonVisibility();
+      }
+
       try {
         btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       } catch(e) {}

@@ -1,6 +1,6 @@
-/* CAUFA LEAGUE eFOOTBALL 26 - Network-First PWA Service Worker for GitHub Pages */
+/* CAUFA LEAGUE eFOOTBALL 26 - Network-First PWA Service Worker with Auto-Update Engine */
 
-const CACHE_NAME = 'caufa-league-v3.0';
+const CACHE_NAME = 'caufa-league-v4.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -11,7 +11,14 @@ const PRECACHE_ASSETS = [
   './assets/logo.png'
 ];
 
-// Install Event - Precache core app shell assets for smooth GitHub Pages & Offline loading
+// Message Event Handler for Immediate Update Activation
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'SKIP_WAITING')) {
+    self.skipWaiting();
+  }
+});
+
+// Install Event - Precache core app shell assets & skip waiting
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME)
@@ -21,7 +28,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// Activate Event - Purge old caches
+// Activate Event - Purge old caches & claim clients immediately
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
@@ -34,13 +41,14 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Network-First Fetch Strategy with Cache Fallback
+// Network-First Fetch Strategy with Cache Fallback for Always-Fresh Updates
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (!e.request.url.startsWith('http')) return;
 
+  // Always attempt fresh network fetch first
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
@@ -51,7 +59,7 @@ self.addEventListener('fetch', (e) => {
         return networkResponse;
       })
       .catch(() => {
-        // Network failed (Offline / Slow GitHub Pages): Serve cached snapshot
+        // Network failed (Offline / Slow Connection): Fallback to cached snapshot
         return caches.match(e.request).then((cachedResponse) => {
           return cachedResponse || caches.match('./index.html') || caches.match('./');
         });

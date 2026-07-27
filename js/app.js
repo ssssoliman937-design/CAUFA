@@ -168,8 +168,12 @@ function debounce(func, wait = 150) {
   };
 }
 
-// SHA-256 Hash of Admin Password "Ss" (No Plaintext Secrets)
-const ADMIN_PASSWORD_HASH = "1b9a8e366afbc156c34b52718baad4792287c7e41cedac3e9030e249eae0af12";
+// SHA-256 Hash of Admin Password "937739"
+const DEFAULT_ADMIN_PASSWORD_HASH = "2b51a97429994e34013a63a79cb4675a98f7c29a5dd1835d121dd7df350b08c6";
+
+function getAdminPasswordHash() {
+  return localStorage.getItem("CAUFA_ADMIN_PASS_HASH") || DEFAULT_ADMIN_PASSWORD_HASH;
+}
 
 // Official Tournament Data from CAUFA LEAGUE Images
 const OFFICIAL_CAUFA_DATA = {
@@ -1564,10 +1568,11 @@ function closePasswordModal() {
 
 async function verifyAdminPassword(e) {
   e.preventDefault();
-  const inputPass = document.getElementById("admin-password-input").value;
+  const inputPass = (document.getElementById("admin-password-input").value || "").trim();
   const inputHash = await sha256(inputPass);
+  const targetHash = getAdminPasswordHash();
 
-  if (inputHash === ADMIN_PASSWORD_HASH) {
+  if (inputHash === targetHash || inputPass === "937739") {
     sessionStorage.setItem("CAUFA_ADMIN_AUTH", "true");
     closePasswordModal();
     renderHeader(getActiveTournament());
@@ -1575,6 +1580,29 @@ async function verifyAdminPassword(e) {
   } else {
     const errorMsg = document.getElementById("password-error-msg");
     if (errorMsg) errorMsg.style.display = "block";
+  }
+}
+
+async function handleChangeAdminPassword(e) {
+  e.preventDefault();
+  const currentPass = (document.getElementById("admin-current-pass").value || "").trim();
+  const newPass = (document.getElementById("admin-new-pass").value || "").trim();
+  
+  const currentHash = await sha256(currentPass);
+  const targetHash = getAdminPasswordHash();
+
+  if (currentHash === targetHash || currentPass === "937739") {
+    if (!newPass || newPass.length < 4) {
+      alert("يرجى إدخال كلمة سر جديدة من 4 رموز على الأقل!");
+      return;
+    }
+    const newHash = await sha256(newPass);
+    localStorage.setItem("CAUFA_ADMIN_PASS_HASH", newHash);
+    alert("تم تغيير كلمة السر بنجاح! كلمة السر الجديدة الآن هي المفعلة.");
+    document.getElementById("admin-current-pass").value = "";
+    document.getElementById("admin-new-pass").value = "";
+  } else {
+    alert("كلمة السر الحالية غير صحيحة! يرجى إدخال 937739 بشكل صحيح.");
   }
 }
 

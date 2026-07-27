@@ -322,6 +322,7 @@
       <div class="admin-tabs">
         <button class="admin-tab-btn active" onclick="switchAdminSubTab(this, 'admin-tab-scores')">⚽ تسجيل النتائج والتصعيد التلقائي</button>
         <button class="admin-tab-btn" onclick="switchAdminSubTab(this, 'admin-tab-cloud')">☁️ ربط السحابة (Firebase)</button>
+        <button class="admin-tab-btn" onclick="switchAdminSubTab(this, 'admin-tab-security')">🔐 تغيير كلمة السر</button>
         <button class="admin-tab-btn" onclick="switchAdminSubTab(this, 'admin-tab-backup')">💾 النسخ الاحتياطي</button>
       </div>
 
@@ -421,6 +422,30 @@
 
           <button type="submit" class="btn-primary" style="width: 100%;">
             🔗 حفظ الرابط وتفعيل المزامنة المباشرة أونلاين
+          </button>
+        </form>
+      <!-- Admin Sub Tab: Security & Password Change -->
+      <div id="admin-tab-security" class="admin-sub-content" style="display: none;">
+        <div style="background: rgba(255,215,0,0.08); border: 1px solid var(--border-gold); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+          <h4 style="color: var(--gold-primary); margin-bottom: 6px; font-size: 0.95rem;">🔐 تغيير كلمة مرور لوحة التحكم</h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+            كلمة السر الأساسية هي <strong style="color:var(--gold-primary);">937739</strong>. يمكنك تغييرها إلى أي كلمة سر جديدة من هنا في أي وقت.
+          </p>
+        </div>
+
+        <form onsubmit="handleChangeAdminPassword(event)">
+          <div class="form-group">
+            <label>كلمة السر الحالية:</label>
+            <input type="password" id="admin-current-pass" class="form-control" placeholder="ادخل 937739" required />
+          </div>
+
+          <div class="form-group">
+            <label>كلمة السر الجديدة:</label>
+            <input type="password" id="admin-new-pass" class="form-control" placeholder="اكتب كلمة السر الجديدة" required />
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%;">
+            🔑 حفظ كلمة السر الجديدة
           </button>
         </form>
       </div>

@@ -1320,24 +1320,25 @@ footer p span {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
-  color: #0b0c10;
-  border: none;
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  color: #000000 !important;
+  border: 1px solid #ffffff;
   border-radius: var(--radius-md);
-  padding: 12px 20px;
+  padding: 14px 20px;
   font-family: inherit;
   font-weight: 900;
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.45);
   transition: var(--transition);
   margin-top: 16px;
   width: 100%;
+  letter-spacing: 0.3px;
 }
 
 .btn-download-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.5);
+  box-shadow: 0 8px 30px rgba(255, 215, 0, 0.65);
 }
 
 .btn-download-card:active {
@@ -1462,4 +1463,58 @@ select.form-control option {
 
 .cl-match-card.admin-interactive:hover::after {
   opacity: 1;
+}
+
+/* ==========================================================================
+   MOBILE & TABLET AUTO-FIT RESPONSIVE SYSTEM FOR MODALS & DASHBOARD
+   ========================================================================== */
+
+.modal-box {
+  max-width: 680px;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 22px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold-primary) rgba(15, 17, 24, 0.95);
+}
+
+.modal-box::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-box::-webkit-scrollbar-thumb {
+  background: var(--gold-primary);
+  border-radius: 6px;
+}
+
+@media (max-width: 767px) {
+  .modal-overlay {
+    padding: 8px;
+  }
+
+  .modal-box {
+    max-width: 95vw;
+    width: 95vw;
+    padding: 14px 12px;
+    margin: 0 auto;
+    max-height: 86vh;
+    border-radius: var(--radius-md);
+  }
+
+  .form-control {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    padding: 10px 12px;
+  }
+
+  .admin-tabs {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .admin-tab-btn {
+    padding: 8px 10px;
+    font-size: 0.76rem;
+  }
 }

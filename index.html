@@ -320,7 +320,8 @@
 
       <!-- Admin Sub Tabs Navigation -->
       <div class="admin-tabs">
-        <button class="admin-tab-btn active" onclick="switchAdminSubTab(this, 'admin-tab-scores')">⚽ تسجيل نتائج دور الـ 32</button>
+        <button class="admin-tab-btn active" onclick="switchAdminSubTab(this, 'admin-tab-scores')">⚽ تسجيل النتائج والتصعيد التلقائي</button>
+        <button class="admin-tab-btn" onclick="switchAdminSubTab(this, 'admin-tab-cloud')">☁️ ربط السحابة (Firebase)</button>
         <button class="admin-tab-btn" onclick="switchAdminSubTab(this, 'admin-tab-backup')">💾 النسخ الاحتياطي</button>
       </div>
 
@@ -328,39 +329,103 @@
       <div id="admin-tab-scores" class="admin-sub-content">
         <form id="admin-score-form">
           <div class="form-group">
-            <label>اختر مباراة من دور الـ 32 لتسجيل نتيجتها:</label>
-            <select id="admin-match-select" class="form-control">
-              <!-- Dynamically filled -->
+            <label>اختر مرحلة البطولة:</label>
+            <select id="admin-stage-select" class="form-control" onchange="onAdminStageChange(this.value)">
+              <option value="roundOf32">⚡ دور الـ 32 (16 مباراة)</option>
+              <option value="roundOf16">🔥 دور الـ 16 (8 مباريات)</option>
+              <option value="quarterFinals">🥊 ربع النهائي (4 مباريات)</option>
+              <option value="semiFinals">🌟 نصف النهائي (مباراتان)</option>
+              <option value="final">🏆 النهائي الكبير (مباراة واحدة)</option>
             </select>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div class="form-group">
-              <label>أهداف اللاعب الأول:</label>
-              <input type="number" id="admin-home-score" class="form-control" min="0" value="0" required />
-            </div>
-            <div class="form-group">
-              <label>أهداف اللاعب الثاني:</label>
-              <input type="number" id="admin-away-score" class="form-control" min="0" value="0" required />
+          <div class="form-group">
+            <label>اختر المباراة لتسجيل نتيجتها:</label>
+            <select id="admin-match-select" class="form-control" onchange="onAdminMatchSelectChange(this.value)">
+              <!-- Dynamically filled by app.js -->
+            </select>
+          </div>
+
+          <!-- Live Match Card Preview & Quick Controls -->
+          <div id="admin-match-preview-card" style="background: rgba(255,215,0,0.08); border: 1px solid var(--border-gold); padding: 14px; border-radius: var(--radius-md); margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+              
+              <!-- Home Player Box -->
+              <div style="flex: 1; text-align: center;">
+                <div id="admin-home-name" style="font-weight: 800; color: var(--gold-light); font-size: 0.95rem; margin-bottom: 6px;">اللاعب الأول</div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                  <button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 1rem;" onclick="adjustAdminScore('home', -1)">-</button>
+                  <input type="number" id="admin-home-score" class="form-control" min="0" value="0" style="width: 55px; text-align: center; font-size: 1.2rem; font-weight: 900; padding: 4px;" required />
+                  <button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 1rem;" onclick="adjustAdminScore('home', 1)">+</button>
+                </div>
+              </div>
+
+              <!-- VS Badge -->
+              <div style="font-weight: 900; color: var(--gold-primary); font-size: 1.1rem; background: rgba(255,215,0,0.15); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border-gold);">
+                VS
+              </div>
+
+              <!-- Away Player Box -->
+              <div style="flex: 1; text-align: center;">
+                <div id="admin-away-name" style="font-weight: 800; color: var(--gold-light); font-size: 0.95rem; margin-bottom: 6px;">اللاعب الثاني</div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                  <button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 1rem;" onclick="adjustAdminScore('away', -1)">-</button>
+                  <input type="number" id="admin-away-score" class="form-control" min="0" value="0" style="width: 55px; text-align: center; font-size: 1.2rem; font-weight: 900; padding: 4px;" required />
+                  <button type="button" class="btn-primary" style="padding: 4px 10px; font-size: 1rem;" onclick="adjustAdminScore('away', 1)">+</button>
+                </div>
+              </div>
+
             </div>
           </div>
 
           <div class="form-group">
             <label>حالة المباراة:</label>
             <select id="admin-match-status" class="form-control">
-              <option value="منتهية ✅">منتهية ✅</option>
-              <option value="مباشر 🔴">مباشر 🔴</option>
+              <option value="منتهية ✅">منتهية ✅ (تأهل تلقائي)</option>
+              <option value="مباشر 🔴">مباشر 🔴 (مباراة جارية)</option>
               <option value="قادمة ⏱️">قادمة ⏱️</option>
             </select>
           </div>
 
-          <button type="submit" class="btn-primary" style="width:100%;">
-            💾 حفظ النتيجة ومزامنتها للجميع
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <button type="button" class="btn-secondary" onclick="quickToggleLiveMatch()" style="font-size: 0.85rem;">
+              🔴 تحويل لمباشر الآن
+            </button>
+            <button type="button" class="btn-primary" onclick="quickFinishAdminMatch()" style="font-size: 0.85rem; background: linear-gradient(135deg, #10b981, #059669);">
+              ⚡ إنهاء وتأهيل الفائز
+            </button>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width:100%; font-size: 1rem; padding: 12px;">
+            💾 حفظ النتيجة والتصعيد التلقائي ومزامنتها للجميع ⚡
           </button>
         </form>
       </div>
 
-      <!-- Admin Sub Tab 2: Backup & Data Control -->
+      <!-- Admin Sub Tab 2: Firebase Cloud Connection -->
+      <div id="admin-tab-cloud" class="admin-sub-content" style="display: none;">
+        <div style="background: rgba(255,215,0,0.08); border: 1px solid var(--border-gold); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+          <h4 style="color: var(--gold-primary); margin-bottom: 6px; font-size: 0.95rem;">🌐 ربط قاعدة البيانات السحابية (Firebase Database)</h4>
+          <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5;">
+            ضع رابط قاعدة البيانات السحابية الخاص بك من Firebase ليقوم الموقع بحفظ ومزامنة أي تعديل تجريه فوراً لجميع الزوار على هواتفهم وأجهزتهم.
+          </p>
+        </div>
+
+        <form onsubmit="handleSaveFirebaseConfig(event)">
+          <div class="form-group">
+            <label>رابط قاعدة البيانات السحابية (Firebase Database URL):</label>
+            <input type="url" id="admin-firebase-url-input" class="form-control" placeholder="https://your-app-default-rtdb.firebaseio.com" style="direction: ltr;" />
+          </div>
+
+          <div id="firebase-status-notice" style="font-size: 0.82rem; margin-bottom: 12px; font-weight: 700;"></div>
+
+          <button type="submit" class="btn-primary" style="width: 100%;">
+            🔗 حفظ الرابط وتفعيل المزامنة المباشرة أونلاين
+          </button>
+        </form>
+      </div>
+
+      <!-- Admin Sub Tab 3: Backup & Data Control -->
       <div id="admin-tab-backup" class="admin-sub-content" style="display: none; text-align: center;">
         <p style="color:var(--text-muted); font-size: 0.88rem; margin-bottom: 18px;">
           يمكنك تصدير كافة بيانات البطولات أو استعادتها في أي وقت:
@@ -368,7 +433,7 @@
 
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
           <button type="button" class="btn-primary" onclick="exportData()">
-            📤 تصدير نسخة احتياطية
+            📤 تصدير نسخة احتياطية (JSON)
           </button>
           
           <label class="btn-secondary" style="cursor: pointer;">

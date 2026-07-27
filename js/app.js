@@ -388,22 +388,29 @@ function setupMultiTabListeners() {
 }
 
 // Firebase Realtime DB Initialization
+const DEFAULT_FIREBASE_URL = "https://cuafa-9f3b6-default-rtdb.firebaseio.com";
+
 function initRealtimeFirebase() {
-  if (typeof firebase !== 'undefined' && firebaseConfig) {
+  if (typeof firebase !== 'undefined') {
     try {
-      if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-      }
-      firebaseDb = firebase.database();
-      
-      firebaseDb.ref('caufa_tournament_data_v16').on('value', (snapshot) => {
-        const val = snapshot.val();
-        if (val) {
-          appState = val;
-          localStorage.setItem("CAUFA_LEAGUE_DATA_V16", JSON.stringify(appState));
-          renderApp();
+      const activeUrl = localStorage.getItem("CAUFA_FIREBASE_URL") || DEFAULT_FIREBASE_URL;
+      if (activeUrl) {
+        if (!firebase.apps.length) {
+          firebase.initializeApp({ databaseURL: activeUrl });
         }
-      });
+        firebaseDb = firebase.database();
+      }
+
+      if (firebaseDb) {
+        firebaseDb.ref('caufa_tournament_data_v16').on('value', (snapshot) => {
+          const val = snapshot.val();
+          if (val) {
+            appState = val;
+            localStorage.setItem("CAUFA_LEAGUE_DATA_V16", JSON.stringify(appState));
+            renderApp();
+          }
+        });
+      }
     } catch (e) {
       console.warn("Firebase Init Error:", e);
     }
@@ -816,28 +823,32 @@ function renderKnockoutBracket(tourney) {
   const sf = (tourney.knockouts && tourney.knockouts.semiFinals) || [];
   const finalMatch = (tourney.knockouts && tourney.knockouts.final) || {};
 
-  const renderMatchCard = (m, label) => `
-    <div class="cl-match-card" onclick="openMatchDetail('${escapeHtml(m.id)}')">
-      <div class="cl-match-meta">
-        <span>${escapeHtml(label)}</span>
-        <span>${escapeHtml(m.status)}</span>
-      </div>
-      <div class="cl-team-line ${m.winner === m.home ? 'winner' : ''}">
-        <div class="cl-team-name">
-          <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
-          ${m.homeGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.homeGroup)}</span>` : ''}
+  const renderMatchCard = (m, label) => {
+    const isAuth = sessionStorage.getItem("CAUFA_ADMIN_AUTH") === "true";
+    const clickFn = isAuth ? `openAdminMatchDirectly('${escapeHtml(m.id)}')` : `openMatchDetail('${escapeHtml(m.id)}')`;
+    return `
+      <div class="cl-match-card ${isAuth ? 'admin-interactive' : ''}" onclick="${clickFn}">
+        <div class="cl-match-meta">
+          <span>${escapeHtml(label)}</span>
+          <span style="${m.status && m.status.includes('مباشر') ? 'color:#ef4444; font-weight:900;' : ''}">${escapeHtml(m.status)}</span>
         </div>
-        <span class="score">${m.scoreHome !== null ? m.scoreHome : '-'}</span>
-      </div>
-      <div class="cl-team-line ${m.winner === m.away ? 'winner' : ''}">
-        <div class="cl-team-name">
-          <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
-          ${m.awayGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.awayGroup)}</span>` : ''}
+        <div class="cl-team-line ${m.winner === m.home ? 'winner' : ''}">
+          <div class="cl-team-name">
+            <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
+            ${m.homeGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.homeGroup)}</span>` : ''}
+          </div>
+          <span class="score">${m.scoreHome !== null ? m.scoreHome : '-'}</span>
         </div>
-        <span class="score">${m.scoreAway !== null ? m.scoreAway : '-'}</span>
+        <div class="cl-team-line ${m.winner === m.away ? 'winner' : ''}">
+          <div class="cl-team-name">
+            <span class="player-name-text player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
+            ${m.awayGroup ? `<span class="group-tag-text">📍 ${escapeHtml(m.awayGroup)}</span>` : ''}
+          </div>
+          <span class="score">${m.scoreAway !== null ? m.scoreAway : '-'}</span>
+        </div>
       </div>
-    </div>
-  `;
+    `;
+  };
 
   // Vertical Mobile Mode Rendering (Stacks all rounds vertically)
   if (currentBracketStage === 'VERTICAL') {
@@ -1567,6 +1578,117 @@ async function verifyAdminPassword(e) {
   }
 }
 
+/* ==========================================================================
+   Super Admin Control Panel & Knockout Auto-Advancement Engine
+   ========================================================================== */
+
+function autoAdvanceKnockouts(tourney) {
+  if (!tourney || !tourney.knockouts) return;
+  const k = tourney.knockouts;
+
+  // 1. Round of 32 -> Round of 16 (دور الـ 16 تلقائياً)
+  if (k.roundOf32 && k.roundOf16) {
+    for (let i = 0; i < 8; i++) {
+      const matchHome = k.roundOf32[i * 2];
+      const matchAway = k.roundOf32[i * 2 + 1];
+      const r16Target = k.roundOf16[i];
+
+      if (r16Target) {
+        if (matchHome && matchHome.winner) {
+          r16Target.home = matchHome.winner;
+          r16Target.homeGroup = `متأهل من م${i * 2 + 1}`;
+        }
+        if (matchAway && matchAway.winner) {
+          r16Target.away = matchAway.winner;
+          r16Target.awayGroup = `متأهل من م${i * 2 + 2}`;
+        }
+        // Auto activate match status when both players are ready
+        if (r16Target.home && r16Target.away && !r16Target.home.includes("الفائز") && !r16Target.away.includes("الفائز")) {
+          if (!r16Target.status || r16Target.status.includes("دور الـ 16")) {
+            r16Target.status = "جاهزة ⚡";
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Round of 16 -> Quarter Finals (دور الـ 8 ربع النهائي تلقائياً)
+  if (k.roundOf16 && k.quarterFinals) {
+    for (let i = 0; i < 4; i++) {
+      const matchHome = k.roundOf16[i * 2];
+      const matchAway = k.roundOf16[i * 2 + 1];
+      const qfTarget = k.quarterFinals[i];
+
+      if (qfTarget) {
+        if (matchHome && matchHome.winner) {
+          qfTarget.home = matchHome.winner;
+          qfTarget.homeGroup = `فائز ر16 (${i * 2 + 1})`;
+        }
+        if (matchAway && matchAway.winner) {
+          qfTarget.away = matchAway.winner;
+          qfTarget.awayGroup = `فائز ر16 (${i * 2 + 2})`;
+        }
+        // Auto activate match status when both players are ready
+        if (qfTarget.home && qfTarget.away && !qfTarget.home.includes("الفائز") && !qfTarget.away.includes("الفائز")) {
+          if (!qfTarget.status || qfTarget.status.includes("ربع النهائي")) {
+            qfTarget.status = "جاهزة ⚡";
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Quarter Finals -> Semi Finals (دور الـ 4 نصف النهائي تلقائياً)
+  if (k.quarterFinals && k.semiFinals) {
+    for (let i = 0; i < 2; i++) {
+      const matchHome = k.quarterFinals[i * 2];
+      const matchAway = k.quarterFinals[i * 2 + 1];
+      const sfTarget = k.semiFinals[i];
+
+      if (sfTarget) {
+        if (matchHome && matchHome.winner) {
+          sfTarget.home = matchHome.winner;
+          sfTarget.homeGroup = `فائز ربع (${i * 2 + 1})`;
+        }
+        if (matchAway && matchAway.winner) {
+          sfTarget.away = matchAway.winner;
+          sfTarget.awayGroup = `فائز ربع (${i * 2 + 2})`;
+        }
+        // Auto activate match status when both players are ready
+        if (sfTarget.home && sfTarget.away && !sfTarget.home.includes("الفائز") && !sfTarget.away.includes("الفائز")) {
+          if (!sfTarget.status || sfTarget.status.includes("نصف النهائي")) {
+            sfTarget.status = "جاهزة ⚡";
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Semi Finals -> Final (النهائي الكبير تلقائياً)
+  if (k.semiFinals && k.final) {
+    const sf1 = k.semiFinals[0];
+    const sf2 = k.semiFinals[1];
+    if (sf1 && sf1.winner) {
+      k.final.home = sf1.winner;
+      k.final.homeGroup = "فائز نصف النهائي 1";
+    }
+    if (sf2 && sf2.winner) {
+      k.final.away = sf2.winner;
+      k.final.awayGroup = "فائز نصف النهائي 2";
+    }
+    if (k.final.home && k.final.away && !k.final.home.includes("طرف") && !k.final.away.includes("طرف")) {
+      if (!k.final.status || k.final.status.includes("النهائي الكبير")) {
+        k.final.status = "مباراة التتويج 🏆";
+      }
+    }
+  }
+
+  // 5. Crown Champion if Final completed
+  if (k.final && k.final.winner) {
+    tourney.champion = k.final.winner;
+  }
+}
+
 function adminLogout() {
   sessionStorage.removeItem("CAUFA_ADMIN_AUTH");
   closeAdminModal();
@@ -1587,18 +1709,142 @@ function openAdminModal() {
   const modal = document.getElementById("admin-modal");
   if (!modal) return;
 
-  const tourney = getActiveTournament();
-  const r32 = tourney.knockouts.roundOf32 || [];
-  
-  const select = document.getElementById("admin-match-select");
-  if (select) {
-    select.innerHTML = r32.map(m => `
-      <option value="${escapeHtml(m.id)}">مواجهة: ${escapeHtml(m.home)} (${escapeHtml(m.homeGroup)}) ضد ${escapeHtml(m.away)} (${escapeHtml(m.awayGroup)})</option>
-    `).join('');
+  const stageSelect = document.getElementById("admin-stage-select");
+  const stage = stageSelect ? stageSelect.value : "roundOf32";
+  populateAdminMatches(stage);
+
+  // Fill Firebase URL input if saved
+  const urlInput = document.getElementById("admin-firebase-url-input");
+  const notice = document.getElementById("firebase-status-notice");
+  const currentUrl = localStorage.getItem("CAUFA_FIREBASE_URL") || DEFAULT_FIREBASE_URL;
+  if (urlInput) urlInput.value = currentUrl;
+  if (notice) {
+    notice.style.color = "#10b981";
+    notice.innerHTML = "🟢 قاعدة البيانات السحابية متصلة ومفعلة أونلاين!";
   }
 
   modal.classList.add("open");
   pushModalToHistory("admin-modal");
+}
+
+function openAdminMatchDirectly(matchId) {
+  const isAuth = sessionStorage.getItem("CAUFA_ADMIN_AUTH") === "true";
+  if (!isAuth) {
+    openMatchDetail(matchId);
+    return;
+  }
+
+  const tourney = getActiveTournament();
+  const match = findMatchInTourney(tourney, matchId);
+  if (!match) {
+    openMatchDetail(matchId);
+    return;
+  }
+
+  openAdminModal();
+  
+  const stageSelect = document.getElementById("admin-stage-select");
+  if (stageSelect) {
+    if (match.id.startsWith("r32_")) stageSelect.value = "roundOf32";
+    else if (match.id.startsWith("r16_")) stageSelect.value = "roundOf16";
+    else if (match.id.startsWith("qf_")) stageSelect.value = "quarterFinals";
+    else if (match.id.startsWith("sf_")) stageSelect.value = "semiFinals";
+    else if (match.id.startsWith("f")) stageSelect.value = "final";
+    
+    populateAdminMatches(stageSelect.value);
+  }
+
+  const matchSelect = document.getElementById("admin-match-select");
+  if (matchSelect) {
+    matchSelect.value = match.id;
+    onAdminMatchSelectChange(match.id);
+  }
+}
+
+function onAdminStageChange(stageKey) {
+  populateAdminMatches(stageKey);
+  const select = document.getElementById("admin-match-select");
+  if (select && select.value) {
+    onAdminMatchSelectChange(select.value);
+  }
+}
+
+function populateAdminMatches(stageKey) {
+  const tourney = getActiveTournament();
+  const select = document.getElementById("admin-match-select");
+  if (!select || !tourney.knockouts) return;
+
+  let matches = [];
+  if (stageKey === "final") {
+    if (tourney.knockouts.final) matches = [tourney.knockouts.final];
+  } else {
+    matches = tourney.knockouts[stageKey] || [];
+  }
+
+  select.innerHTML = matches.map(m => `
+    <option value="${escapeHtml(m.id)}">مواجهة: ${escapeHtml(m.home || 'فائز')} ضد ${escapeHtml(m.away || 'فائز')} (حالياً: ${m.scoreHome !== null ? m.scoreHome + '-' + m.scoreAway : 'لم تلعب'})</option>
+  `).join('');
+
+  if (matches.length > 0) {
+    onAdminMatchSelectChange(matches[0].id);
+  }
+}
+
+function onAdminMatchSelectChange(matchId) {
+  const tourney = getActiveTournament();
+  const match = findMatchInTourney(tourney, matchId);
+  if (!match) return;
+
+  const homeNameEl = document.getElementById("admin-home-name");
+  const awayNameEl = document.getElementById("admin-away-name");
+  const homeScoreEl = document.getElementById("admin-home-score");
+  const awayScoreEl = document.getElementById("admin-away-score");
+  const statusEl = document.getElementById("admin-match-status");
+
+  if (homeNameEl) homeNameEl.textContent = match.home || "اللاعب الأول";
+  if (awayNameEl) awayNameEl.textContent = match.away || "اللاعب الثاني";
+  if (homeScoreEl) homeScoreEl.value = match.scoreHome !== null ? match.scoreHome : 0;
+  if (awayScoreEl) awayScoreEl.value = match.scoreAway !== null ? match.scoreAway : 0;
+  if (statusEl) statusEl.value = match.status || "قادمة ⏱️";
+}
+
+function adjustAdminScore(target, delta) {
+  const inputEl = document.getElementById(target === 'home' ? "admin-home-score" : "admin-away-score");
+  if (inputEl) {
+    let currentVal = parseInt(inputEl.value) || 0;
+    inputEl.value = Math.max(0, currentVal + delta);
+  }
+}
+
+function quickToggleLiveMatch() {
+  const statusEl = document.getElementById("admin-match-status");
+  if (statusEl) {
+    statusEl.value = "مباشر 🔴";
+    handleAdminScoreSave(new Event('submit'));
+  }
+}
+
+function quickFinishAdminMatch() {
+  const statusEl = document.getElementById("admin-match-status");
+  if (statusEl) {
+    statusEl.value = "منتهية ✅";
+    handleAdminScoreSave(new Event('submit'));
+  }
+}
+
+function findMatchInTourney(tourney, matchId) {
+  if (!tourney || !tourney.knockouts) return null;
+  const k = tourney.knockouts;
+  
+  const allRounds = [k.roundOf32, k.roundOf16, k.quarterFinals, k.semiFinals];
+  for (let r of allRounds) {
+    if (r) {
+      const found = r.find(m => m.id === matchId);
+      if (found) return found;
+    }
+  }
+  if (k.final && k.final.id === matchId) return k.final;
+  return null;
 }
 
 function closeAdminModal() {
@@ -1612,23 +1858,52 @@ function closeAdminModal() {
 function handleAdminScoreSave(e) {
   e.preventDefault();
   const matchId = document.getElementById("admin-match-select").value;
-  const homeScore = parseInt(document.getElementById("admin-home-score").value);
-  const awayScore = parseInt(document.getElementById("admin-away-score").value);
+  const homeScoreInput = document.getElementById("admin-home-score").value;
+  const awayScoreInput = document.getElementById("admin-away-score").value;
+  const homeScore = parseInt(homeScoreInput);
+  const awayScore = parseInt(awayScoreInput);
   const status = document.getElementById("admin-match-status").value;
 
+  if (isNaN(homeScore) || isNaN(awayScore)) {
+    alert("يرجى إدخال أرقام صحيحة للأهداف!");
+    return;
+  }
+
   const tourney = getActiveTournament();
-  const match = (tourney.knockouts.roundOf32 || []).find(m => m.id === matchId);
+  const match = findMatchInTourney(tourney, matchId);
   if (match) {
     match.scoreHome = homeScore;
     match.scoreAway = awayScore;
     match.status = status;
+    
     if (homeScore > awayScore) match.winner = match.home;
     else if (awayScore > homeScore) match.winner = match.away;
+    else match.winner = null;
 
+    autoAdvanceKnockouts(tourney);
     saveState();
     renderApp();
-    alert("تم تحديث نتيجة المباراة بنجاح أونلاين للجميع! 🏆");
+    alert("تم حفظ النتيجة والتصعيد التلقائي للمتأهلين ومزامنتها بنجاح! 🏆");
+  } else {
+    alert("يرجى اختيار مباراة صالحة!");
   }
+}
+
+function handleSaveFirebaseConfig(e) {
+  e.preventDefault();
+  const url = (document.getElementById("admin-firebase-url-input").value || "").trim();
+  if (url) {
+    localStorage.setItem("CAUFA_FIREBASE_URL", url);
+    initRealtimeFirebase();
+    if (typeof firebaseDb !== 'undefined' && firebaseDb) {
+      firebaseDb.ref('caufa_tournament_data_v16').set(appState);
+    }
+    alert("تم حفظ رابط السحابة وتفعيل المزامنة المباشرة أونلاين بنجاح! ⚡");
+  } else {
+    localStorage.removeItem("CAUFA_FIREBASE_URL");
+    alert("تم إزالة رابط السحابة والرجوع للوضع المحلي.");
+  }
+  openAdminModal();
 }
 
 function exportData() {

@@ -482,9 +482,9 @@ function renderQualified32Leaderboard(tourney) {
 
   qualList.forEach((q, idx) => {
     html += `
-      <tr class="qualified">
+      <tr class="qualified" onclick="openPlayerModal('${escapeHtml(q.manager)}')" style="cursor:pointer;">
         <td style="font-weight:900; color: var(--gold-primary);">${idx + 1}</td>
-        <td style="text-align:right; font-weight:800; color:var(--gold-light); white-space:nowrap;"><span class="player-clickable" onclick="openPlayerModal('${escapeHtml(q.manager)}')">👤 ${escapeHtml(q.manager)}</span></td>
+        <td style="text-align:right; font-weight:800; color:var(--gold-light); white-space:nowrap;"><span class="player-clickable">👤 ${escapeHtml(q.manager)}</span></td>
         <td><span class="badge-live" style="background:rgba(255,215,0,0.1); color:var(--gold-primary); border:1px solid var(--border-gold); padding:2px 8px;">${escapeHtml(q.group)}</span></td>
         <td><span style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:8px; font-weight:800; font-size:0.75rem; white-space:nowrap;">${escapeHtml(q.reason)}</span></td>
         <td class="pts-highlight">${q.p}</td>
@@ -584,11 +584,11 @@ function renderGroupStandings(tourney) {
       const isBest3rd = t.status === "qualified_best_3rd";
 
       html += `
-        <tr class="${(isDirectQual || isBest3rd) ? 'qualified' : ''}">
+        <tr class="${(isDirectQual || isBest3rd) ? 'qualified' : ''}" onclick="openPlayerModal('${escapeHtml(t.manager)}')" style="cursor:pointer;">
           <td style="font-weight:800;">${idx + 1}</td>
           <td style="text-align:right;">
             <div class="team-cell">
-              <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(t.manager)}')" style="font-size: 0.9rem; color: var(--gold-light); font-weight: 800; white-space:nowrap;">👤 ${escapeHtml(t.manager)}</span>
+              <span class="player-clickable" style="font-size: 0.9rem; color: var(--gold-light); font-weight: 800; white-space:nowrap;">👤 ${escapeHtml(t.manager)}</span>
             </div>
           </td>
           <td>${t.mp}</td>
@@ -1358,7 +1358,15 @@ function setupEventListeners() {
 
 function openPlayerModal(playerName) {
   if (!playerName) return;
-  const sanitizedName = escapeHtml(playerName).trim();
+  const rawTarget = String(playerName || "")
+    .replace(/&amp;/g, '&')
+    .replace(/&#039;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim()
+    .toLowerCase();
+
   const tourney = getActiveTournament();
   
   let player = null;
@@ -1368,10 +1376,13 @@ function openPlayerModal(playerName) {
   Object.entries(tourney.groups || {}).forEach(([gName, teams]) => {
     const sorted = [...teams].sort((a, b) => b.p - a.p || ((b.gf - b.ga) - (a.gf - a.ga)));
     sorted.forEach((t, idx) => {
-      if (t.manager.toLowerCase() === sanitizedName.toLowerCase() || t.name.toLowerCase() === sanitizedName.toLowerCase()) {
-        player = t;
-        groupName = gName;
-        rank = idx + 1;
+      const pName = (t.manager || t.name || "").trim().toLowerCase();
+      if (pName === rawTarget || pName.includes(rawTarget) || rawTarget.includes(pName)) {
+        if (!player) {
+          player = t;
+          groupName = gName;
+          rank = idx + 1;
+        }
       }
     });
   });
@@ -1385,7 +1396,7 @@ function openPlayerModal(playerName) {
   if (!player) {
     content.innerHTML = `
       <div style="text-align:center; padding:30px; color:var(--gold-primary);">
-        <h3 style="font-size:1.3rem;">👤 ${sanitizedName}</h3>
+        <h3 style="font-size:1.3rem;">👤 ${escapeHtml(playerName)}</h3>
         <p style="color:var(--text-muted); margin-top:8px; font-size:0.9rem;">لاعب مسجل في بطولة CAUFA LEAGUE eFOOTBALL 26</p>
       </div>
     `;
@@ -1397,11 +1408,12 @@ function openPlayerModal(playerName) {
 
   const gd = (player.gf || 0) - (player.ga || 0);
   const winRate = player.mp > 0 ? Math.round((player.w / player.mp) * 100) : 0;
+  const avgGoals = player.mp > 0 ? (player.gf / player.mp).toFixed(1) : 0;
 
   let qualBadge = "";
-  if (rank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.8rem;">تأهل مباشر 🥇</span>`;
-  else if (player.status === "qualified_best_3rd") qualBadge = `<span style="background:rgba(255,215,0,0.2); color:var(--gold-primary); padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid var(--border-gold); font-size:0.8rem;">أفضل 8 ثوالث 🌟</span>`;
-  else qualBadge = `<span style="background:rgba(239,68,68,0.2); color:#ef4444; padding:4px 12px; border-radius:10px; font-weight:800; border:1px solid rgba(239,68,68,0.4); font-size:0.8rem;">مغادر ❌</span>`;
+  if (rank <= 2) qualBadge = `<span style="background:rgba(16,185,129,0.2); color:#10b981; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(16,185,129,0.4); font-size:0.85rem;">تأهل مباشر 🥇</span>`;
+  else if (player.status === "qualified_best_3rd") qualBadge = `<span style="background:rgba(255,215,0,0.2); color:var(--gold-primary); padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid var(--border-gold); font-size:0.85rem;">أفضل 8 ثوالث 🌟</span>`;
+  else qualBadge = `<span style="background:rgba(239,68,68,0.2); color:#ef4444; padding:6px 14px; border-radius:12px; font-weight:800; border:1px solid rgba(239,68,68,0.4); font-size:0.85rem;">مغادر ❌</span>`;
 
   // Gather All Matches for this player
   const playerMatches = [];
@@ -1476,69 +1488,71 @@ function openPlayerModal(playerName) {
   content.innerHTML = `
     <div style="direction:rtl;">
       <!-- Profile Header Summary -->
-      <div style="background:linear-gradient(135deg, rgba(255,215,0,0.12), rgba(15,16,24,0.95)); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:16px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+      <div style="background:linear-gradient(135deg, rgba(255,215,0,0.15), rgba(15,16,24,0.98)); border:1px solid var(--border-gold); border-radius:var(--radius-md); padding:16px; margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; box-shadow: 0 4px 15px rgba(255,215,0,0.1);">
         <div>
-          <h3 style="font-size:1.35rem; font-weight:900; color:var(--gold-primary);">👤 ${escapeHtml(player.manager)}</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">📍 ${escapeHtml(groupName)} • الترتيب بالمجموعة: #${rank}</p>
+          <h3 style="font-size:1.45rem; font-weight:900; color:var(--gold-primary); margin-bottom:2px;">👤 ${escapeHtml(player.manager)}</h3>
+          <p style="font-size:0.88rem; color:var(--text-muted);">📍 ${escapeHtml(groupName)} • الترتيب بالمجموعة: <strong style="color:var(--gold-primary);">#${rank}</strong></p>
         </div>
         <div>${qualBadge}</div>
       </div>
 
       <!-- Quick Stats Grid -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:8px; margin-bottom:20px;">
-        <div class="profile-item">
-          <div class="p-lbl">النقاط</div>
-          <div class="p-val" style="color:var(--gold-primary);">${player.p}</div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:10px; margin-bottom:22px;">
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">النقاط الإجمالية</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${player.p}</div>
         </div>
-        <div class="profile-item">
-          <div class="p-lbl">أهداف له</div>
-          <div class="p-val" style="color:#10b981;">${player.gf} ⚽</div>
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف له</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#10b981;">${player.gf} ⚽</div>
         </div>
-        <div class="profile-item">
-          <div class="p-lbl">أهداف عليه</div>
-          <div class="p-val" style="color:#ef4444;">${player.ga}</div>
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">أهداف عليه</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:#ef4444;">${player.ga}</div>
         </div>
-        <div class="profile-item">
-          <div class="p-lbl">فارق الأهداف</div>
-          <div class="p-val" style="direction:ltr;">${gd > 0 ? '+' + gd : gd}</div>
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">فارق الأهداف</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; direction:ltr; color:var(--gold-light);">${gd > 0 ? '+' + gd : gd}</div>
         </div>
-        <div class="profile-item">
-          <div class="p-lbl">سجل المباريات</div>
-          <div class="p-val" style="font-size:0.88rem; font-weight:800;">
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">سجل المباريات</div>
+          <div class="p-val" style="font-size:0.95rem; font-weight:800; margin-top:2px;">
             <span style="color:var(--status-win);">${player.w} ف</span> / <span style="color:var(--status-draw);">${player.d} ت</span> / <span style="color:var(--status-loss);">${player.l} خ</span>
           </div>
         </div>
-        <div class="profile-item">
-          <div class="p-lbl">نسبة الفوز</div>
-          <div class="p-val" style="color:var(--gold-light);">${winRate}%</div>
+        <div class="profile-item" style="background:var(--bg-card); border:1px solid var(--border-subtle); padding:10px; border-radius:var(--radius-sm); text-align:center;">
+          <div class="p-lbl" style="font-size:0.72rem; color:var(--text-muted);">نسبة الفوز</div>
+          <div class="p-val" style="font-size:1.3rem; font-weight:900; color:var(--gold-primary);">${winRate}%</div>
         </div>
       </div>
 
-      <!-- Matches History Title -->
-      <h4 style="font-size:1rem; font-weight:900; color:var(--gold-primary); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
-        <span>⚽</span> جميع مواجهات اللاعب ومبارياته بالبطولة:
-      </h4>
+      <!-- Matches History Header -->
+      <div style="border-top:1px solid var(--border-subtle); padding-top:14px; margin-top:10px;">
+        <h4 style="font-size:1rem; font-weight:900; color:var(--gold-primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+          <span>⚽</span> جميع مواجهات ومباريات اللاعب بالبطولة (${playerMatches.length}):
+        </h4>
 
-      <!-- Match History List -->
-      <div style="display:flex; flex-direction:column; gap:10px; max-height:280px; overflow-y:auto; padding-left:4px;">
-        ${playerMatches.map(m => `
-          <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="flex:1;">
-              <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:700;">📍 ${escapeHtml(m.stage)}</div>
-              <div style="font-size:0.9rem; font-weight:800; color:var(--text-main); margin-top:2px;">
-                <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
-                <span style="color:var(--text-muted); font-size:0.8rem; margin:0 4px;">ضد</span>
-                <span class="player-clickable" onclick="openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
+        <!-- Match History List -->
+        <div style="display:flex; flex-direction:column; gap:10px; max-height:300px; overflow-y:auto; padding-left:4px;">
+          ${playerMatches.map(m => `
+            <div style="background:var(--bg-card); border:1px solid var(--border-gold); border-radius:var(--radius-sm); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+              <div style="flex:1;">
+                <div style="font-size:0.78rem; color:var(--gold-primary); font-weight:800;">📍 ${escapeHtml(m.stage)}</div>
+                <div style="font-size:0.95rem; font-weight:800; color:var(--text-main); margin-top:4px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span class="player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.home)}')">👤 ${escapeHtml(m.home)}</span>
+                  <span style="color:var(--gold-primary); font-size:0.82rem; font-weight:900;">ضد</span>
+                  <span class="player-clickable" onclick="event.stopPropagation(); openPlayerModal('${escapeHtml(m.away)}')">👤 ${escapeHtml(m.away)}</span>
+                </div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:1.15rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.15); padding:4px 14px; border-radius:8px; border:1px solid var(--border-gold);">
+                  ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
+                </div>
+                <div style="font-size:0.75rem; margin-top:3px;">${m.resultBadge}</div>
               </div>
             </div>
-            <div style="text-align:center;">
-              <div style="font-size:1.05rem; font-weight:900; color:var(--gold-primary); background:rgba(255,215,0,0.1); padding:2px 10px; border-radius:6px; border:1px solid var(--border-gold);">
-                ${m.scoreHome !== null ? m.scoreHome + ' - ' + m.scoreAway : 'VS'}
-              </div>
-              <div style="font-size:0.72rem; margin-top:2px;">${m.resultBadge}</div>
-            </div>
-          </div>
-        `).join('')}
+          `).join('')}
+        </div>
       </div>
     </div>
   `;

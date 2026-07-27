@@ -1131,3 +1131,25 @@ footer p span {
   color: var(--gold-primary);
   font-weight: 800;
 }
+
+/* Interactive Player Clickable Hover Effects & Indicators */
+.player-clickable, .team-cell, .cl-team-name, .scorer-info h4 {
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.player-clickable:hover, .team-cell:hover, .cl-team-name:hover .player-clickable, .scorer-info h4:hover {
+  color: var(--gold-primary) !important;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+  text-decoration: underline !important;
+}
+
+.table-standings tbody tr {
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.table-standings tbody tr:hover {
+  background: rgba(255, 215, 0, 0.08) !important;
+}
+

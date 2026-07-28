@@ -1,0 +1,25 @@
+{
+  "name": "thanaweya-amma-results",
+  "version": "1.0.0",
+  "description": "موقع نتيجة الثانوية العامة 2026 - سريع جداً ومستضاف على جيتهاب بايجز",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:data": "py scripts/build_data.py",
+    "server": "node server.js"
+  },
+  "keywords": ["thanaweya", "thanaweya-amma", "results", "egypt", "highschool"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.7"
+  }
+}

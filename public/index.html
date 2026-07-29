@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SHEFOtube PRO 4K - محمل الفيديوهات والصوتيات الفائق (بدون علامة مائية)</title>
+  <meta name="description" content="أقوى وأسرع موقع لتنزيل الفيديوهات والصوتيات من تيك توك، يوتيوب، إنستجرام، وفيسبوك بكافة الجودات مع تحديد الأبعاد وحجم الملف بالـ MB والإشعار بالتقدم">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#ff0050">
+
+  <!-- FontAwesome Icons & CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- Toast Notification System -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Auto Clipboard Detection Floating Banner -->
+  <div class="clipboard-banner" id="clipboardBanner" style="display: none;">
+    <div class="clip-content">
+      <i class="fa-solid fa-paste clip-icon"></i>
+      <div>
+        <strong style="font-size: 13px; display: block;">تم رصد رابط في الحافظة 📋</strong>
+        <span id="clipboardUrlText" style="font-size: 11px; opacity: 0.85;">https://...</span>
+      </div>
+    </div>
+    <div class="clip-actions">
+      <button class="clip-btn" id="clipFetchBtn">استخراج فوراً 🚀</button>
+      <button class="clip-close" id="clipCloseBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+  </div>
+
+  <!-- Header Navigation -->
+  <header class="app-header">
+    <div class="header-container">
+      <a href="/" class="brand-logo">
+        <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+        <span class="logo-text">SHEFOtube <span class="logo-badge">PRO 4K</span></span>
+      </a>
+
+      <div class="header-actions">
+        <button class="pwa-btn" id="installPwaBtn" style="display: none;">
+          <i class="fa-solid fa-download"></i> تثبيت التطبيق
+        </button>
+        <button class="icon-btn" id="batchModalBtn" title="تحميل دفعة روابط">
+          <i class="fa-solid fa-layer-group"></i>
+        </button>
+        <button class="icon-btn" id="settingsToggleBtn" title="الإعدادات">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+        <button class="icon-btn" id="historyToggleBtn" title="سجل التحميلات">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+        </button>
+        <button class="icon-btn" id="themeToggleBtn" title="تبديل المظهر">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <main class="main-wrapper">
+
+    <!-- Hero Header -->
+    <section class="hero-section">
+      <h1 class="hero-title">
+        نزل أي فيديو أو صوت <span class="hero-gradient">بدون علامة مائية مع SHEFOtube</span>
+      </h1>
+      <p class="hero-subtitle">
+        حمل من تيك توك، يوتيوب، إنستجرام، وفيسبوك بأعلى جودة مع معرفة حجم كل جودة بالـ MB ومتابعة التحميل في شريط الإشعارات فورياً!
+      </p>
+
+      <!-- Supported Platform Chips -->
+      <div class="platforms-bar">
+        <div class="platform-chip"><i class="fa-brands fa-tiktok" style="color: #ff0050;"></i> تيك توك</div>
+        <div class="platform-chip"><i class="fa-brands fa-youtube" style="color: #ff0000;"></i> يوتيوب</div>
+        <div class="platform-chip"><i class="fa-brands fa-instagram" style="color: #e1306c;"></i> إنستجرام</div>
+        <div class="platform-chip"><i class="fa-brands fa-facebook" style="color: #1877f2;"></i> فيسبوك</div>
+        <div class="platform-chip"><i class="fa-brands fa-x-twitter" style="color: #1da1f2;"></i> تويتر (X)</div>
+        <div class="platform-chip"><i class="fa-brands fa-pinterest" style="color: #e60023;"></i> بينتريست</div>
+        <div class="platform-chip"><i class="fa-brands fa-vimeo-v" style="color: #1ab7ea;"></i> فيميو</div>
+      </div>
+
+      <!-- Main Input Search Card -->
+      <div class="search-card">
+        <div class="search-input-group">
+          <i class="fa-solid fa-link search-icon"></i>
+          <input type="url" id="videoUrlInput" class="url-input" placeholder="ضع رابط الفيديو أو المقطع الصوتي هنا..." autocomplete="off">
+        </div>
+        <div class="search-btn-group">
+          <button class="paste-btn" id="pasteBtn">
+            <i class="fa-solid fa-paste"></i> لصق الرابط
+          </button>
+          <button class="fetch-btn" id="fetchBtn">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> استخراج الجودات
+          </button>
+        </div>
+      </div>
+
+      <!-- Web Share Target Hint -->
+      <div class="share-notice">
+        <i class="fa-solid fa-share-nodes"></i>
+        <span><strong>تلميح خارق:</strong> عند تصفح أي تطبيق (تيك توك أو يوتيوب)، اضغط <strong>مشاركة Share</strong> واختر <strong>SHEFOtube</strong> ليفتح الموقع جاهزاً للتحميل تلقائياً!</span>
+      </div>
+    </section>
+
+    <!-- Video Extraction Result Section -->
+    <section class="result-container" id="resultContainer">
+
+      <!-- Meta Card -->
+      <div class="meta-card">
+        <div class="thumb-wrapper">
+          <img src="" alt="غلاف الفيديو" id="metaThumb" class="thumb-img">
+          <span class="duration-tag" id="metaDuration">00:00</span>
+          <span class="watermark-badge" id="watermarkBadge"><i class="fa-solid fa-shield-halved"></i> بدون علامة مائية</span>
+        </div>
+
+        <div class="meta-details">
+          <div>
+            <h2 class="video-title" id="metaTitle">عنوان الفيديو المستخرج</h2>
+            
+            <div class="meta-info-row">
+              <span class="meta-pill channel-pill"><i class="fa-solid fa-user-gear"></i> <span class="channel-name" id="metaAuthor">القناة</span></span>
+              <span class="platform-tag" id="metaPlatform"><i class="fa-brands fa-tiktok"></i> TikTok</span>
+              <span class="meta-pill date-pill" id="metaPublishDatePill"><i class="fa-solid fa-calendar-days"></i> <span id="metaPublishDate">منذ يومين</span></span>
+              <span class="meta-pill views-pill" id="metaViewsPill"><i class="fa-solid fa-eye"></i> <span id="metaViews">1.2M مشاهدة</span></span>
+              <span class="meta-pill likes-pill" id="metaLikesPill"><i class="fa-solid fa-heart"></i> <span id="metaLikes">85K إعجاب</span></span>
+            </div>
+          </div>
+
+          <!-- Action Toolbar -->
+          <div class="action-toolbar">
+            <button class="tool-btn" id="previewMediaBtn">
+              <i class="fa-solid fa-circle-play"></i> معاينة وتشغيل
+            </button>
+            <button class="tool-btn" id="toggleTrimmerBtn">
+              <i class="fa-solid fa-scissors"></i> قص جزء محدد
+            </button>
+            <button class="tool-btn" id="generateQrBtn">
+              <i class="fa-solid fa-qrcode"></i> رمز QR للهاتف
+            </button>
+          </div>
+
+          <!-- Trimmer Sub-box -->
+          <div class="trimmer-box" id="trimmerBox">
+            <strong style="color: var(--accent-cyan); font-size: 14px;"><i class="fa-solid fa-scissors"></i> حدد وقت بداية ونهاية التحميل:</strong>
+            <div class="trimmer-inputs">
+              <div class="trim-field">
+                <label>وقت البداية (ثانية):</label>
+                <input type="number" id="trimStart" value="0" min="0">
+              </div>
+              <div class="trim-field">
+                <label>وقت النهاية (ثانية):</label>
+                <input type="number" id="trimEnd" value="60" min="1">
+              </div>
+              <button class="tool-btn" style="margin-top: 18px; background: var(--accent-cyan); color: #000;" id="applyTrimBtn">
+                حفظ القص
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Preview Player Modal Container with Equalizer -->
+      <div id="playerContainer" style="display: none; margin-bottom: 25px; text-align: center;">
+        <video id="mediaPlayer" controls style="max-width: 100%; border-radius: var(--radius-md); max-height: 400px; box-shadow: var(--glass-shadow);"></video>
+        
+        <!-- Audio Equalizer Visualizer Bar -->
+        <div class="eq-visualizer">
+          <span style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);"><i class="fa-solid fa-sliders"></i> معالج الصوت الإحترافي:</span>
+          <div class="eq-buttons">
+            <button class="eq-btn active" data-eq="normal">🎧 متوازن</button>
+            <button class="eq-btn" data-eq="bass">🔊 مضخم Bass Boost</button>
+            <button class="eq-btn" data-eq="vocal">🎙️ استوديو نقاء الصوت</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Options Section -->
+      <div class="download-options-section">
+        <div class="download-tabs">
+          <button class="tab-btn active" data-tab="video">
+            <i class="fa-solid fa-video"></i> خيارات الفيديو (<span id="videoCount">0</span>)
+          </button>
+          <button class="tab-btn" data-tab="audio">
+            <i class="fa-solid fa-music"></i> صوت فقط MP3 / M4A (<span id="audioCount">0</span>)
+          </button>
+        </div>
+
+        <!-- Video Qualities Tab Pane -->
+        <div class="tab-pane active" id="videoTabPane">
+          <div class="options-grid" id="videoGrid"></div>
+        </div>
+
+        <!-- Audio Qualities Tab Pane -->
+        <div class="tab-pane" id="audioTabPane" style="display: none;">
+          <div class="options-grid" id="audioGrid"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Download History Library Section -->
+    <section class="history-container" id="historySection" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+        <h2 class="section-title" style="margin-bottom: 0;">
+          <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-gold);"></i> مكتبة وسجل التحميلات
+        </h2>
+        <div id="historyStats" style="font-size: 13px; font-weight: 700; color: var(--text-muted);"></div>
+      </div>
+
+      <!-- History Controls Bar -->
+      <div class="history-controls">
+        <input type="text" id="historySearchInput" placeholder="بحث في السجل..." class="history-search-input">
+        <div class="history-filter-chips">
+          <button class="h-chip active" data-filter="all">الكل</button>
+          <button class="h-chip" data-filter="video">🎥 فيديوهات</button>
+          <button class="h-chip" data-filter="audio">🎧 صوتيات</button>
+        </div>
+        <button class="tool-btn" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="HistoryStore.clearAll()">
+          <i class="fa-solid fa-trash"></i> مسح السجل
+        </button>
+      </div>
+
+      <div id="historyList"></div>
+    </section>
+
+    <!-- Extras & Features Section -->
+    <section class="extras-section">
+      <h2 class="section-title">
+        <i class="fa-solid fa-fire" style="color: var(--accent-red);"></i> ميزات خارقة في SHEFOtube
+      </h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-gauge-high"></i></div>
+          <h3 class="feature-h">سرعة صاروخية Multi-Thread</h3>
+          <p class="feature-p">تحميل أسرع بـ 10 أضعاف عبر الاتصالات المتعددة مع شريط إشعارات يوضح الـ MB والمئة والسرعة الفورية.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <h3 class="feature-h">إزالة العلامة المائية ✨</h3>
+          <p class="feature-p">تحميل فيديوهات تيك توك، يوتيوب شورتس، وريلز إنستجرام بدون لوجو أو علامات مائية صافية 100%.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
+          <h3 class="feature-h">دعم Web Share Target</h3>
+          <p class="feature-p">اربط التطبيق بهاتفك وششارك أي فيديو مباشرة من أي تطبيق آخر ليتم استخراجه في ثانية واحدة.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Navigation Bar -->
+  <nav class="mobile-bottom-nav">
+    <button class="nav-item active" id="navHomeBtn">
+      <i class="fa-solid fa-house"></i>
+      <span>الرئيسية</span>
+    </button>
+    <button class="nav-item" id="navExtractBtn">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <span>استخراج</span>
+    </button>
+    <button class="nav-item" id="navBatchBtn">
+      <i class="fa-solid fa-layer-group"></i>
+      <span>دفعة روابط</span>
+    </button>
+    <button class="nav-item" id="navHistoryBtn">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      <span>السجل</span>
+    </button>
+    <button class="nav-item" id="navThemeBtn">
+      <i class="fa-solid fa-moon"></i>
+      <span>المظهر</span>
+    </button>
+  </nav>
+
+  <!-- Floating Download Dashboard -->
+  <div class="download-dashboard" id="downloadDashboard">
+    <div class="dash-header">
+      <div class="dash-title">
+        <i class="fa-solid fa-spinner fa-spin" style="color: var(--accent-red);"></i>
+        <span id="dashFileName">جاري تحميل الفيديو...</span>
+      </div>
+      <div class="dash-controls">
+        <button class="dash-icon-btn" id="dashCancelBtn" title="إلغاء التحميل"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+
+    <!-- Live Progress Track -->
+    <div class="progress-track">
+      <div class="progress-fill" id="dashProgressFill"></div>
+    </div>
+
+    <!-- Live Stats Row -->
+    <div class="dash-stats">
+      <span><strong id="dashPercentage">0%</strong> (<span id="dashDownloadedSize">0 MB</span> / <span id="dashTotalSize">0 MB</span>)</span>
+      <span class="speed-badge"><i class="fa-solid fa-bolt"></i> <span id="dashSpeed">0 MB/s</span></span>
+      <span class="eta-badge"><i class="fa-solid fa-clock"></i> متبقي: <span id="dashEta">00:00</span></span>
+    </div>
+
+    <!-- Turbo Booster Pill -->
+    <div class="turbo-pill">
+      <span><i class="fa-solid fa-rocket"></i> محرك SHEFOtube Turbo مفعل</span>
+      <strong style="color: #fff;">20x Multi-Thread Speed</strong>
+    </div>
+  </div>
+
+  <!-- Modal Overlay for QR Code -->
+  <div class="modal-overlay" id="qrModal">
+    <div class="modal-box">
+      <button class="modal-close" id="closeQrModal"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="margin-bottom: 10px; font-weight: 800;"><i class="fa-solid fa-qrcode" style="color: var(--accent-cyan);"></i> مسح الرمز للهاتف</h3>
+      <p style="color: var(--text-muted); font-size: 13px;">امسح هذا الرمز بكاميرا هاتفك لفتح رابط التحميل مباشرة على الهاتف!</p>
+      <div id="qrCanvas"></div>
+      <button class="tool-btn" style="width: 100%; justify-content: center;" id="copyQrLinkBtn">
+        <i class="fa-solid fa-copy"></i> نسخ الرابط
+      </button>
+    </div>
+  </div>
+
+  <!-- Batch Downloader Modal Overlay -->
+  <div class="modal-overlay" id="batchModal">
+    <div class="modal-box" style="max-width: 500px;">
+      <button class="modal-close" id="closeBatchModal"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="margin-bottom: 10px; font-weight: 800; color: var(--accent-gold);">
+        <i class="fa-solid fa-layer-group"></i> تحميل دفعة روابط متعددة
+      </h3>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">ضع عدة روابط هنا (رابط واحد في كل سطر) لتحليلها وتحميلها دفعة واحدة:</p>
+      <textarea id="batchUrlsInput" rows="5" class="history-search-input" style="width: 100%; font-family: monospace; resize: vertical;" placeholder="https://www.tiktok.com/@...&#10;https://www.youtube.com/watch?v=..."></textarea>
+      <button class="fetch-btn" style="width: 100%; justify-content: center; margin-top: 14px;" id="startBatchBtn">
+        <i class="fa-solid fa-bolt"></i> بدء استخراج الدفعة
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal Overlay -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-box" style="max-width: 420px;">
+      <button class="modal-close" id="closeSettingsModal"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="margin-bottom: 15px; font-weight: 800;">
+        <i class="fa-solid fa-gear" style="color: var(--accent-cyan);"></i> إعدادات SHEFOtube
+      </h3>
+      
+      <div style="text-align: right; display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; font-weight: 700;">الجودة المفضل استخراجها تلقائياً:</span>
+          <select id="prefQuality" class="history-search-input" style="width: auto; padding: 4px 8px;">
+            <option value="1080p">1080p Full HD</option>
+            <option value="720p">720p HD</option>
+            <option value="4K">4K Ultra HD</option>
+            <option value="mp3">MP3 320k (صوت)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 13px; font-weight: 700;">تنبيهات الاهتزاز (Haptics):</span>
+          <input type="checkbox" id="hapticsToggle" checked style="accent-color: var(--accent-red); width: 18px; height: 18px;">
+        </div>
+
+        <button class="tool-btn" style="justify-content: center; margin-top: 10px;" id="exportHistoryBtn">
+          <i class="fa-solid fa-file-export"></i> تصدير سجل التحميلات (نسخة احتياطية)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Code Generator Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Application Modules -->
+  <script src="/js/historyStore.js"></script>
+  <script src="/js/qrGenerator.js"></script>
+  <script src="/js/mediaPreviewer.js"></script>
+  <script src="/js/downloadManager.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

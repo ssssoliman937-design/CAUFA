@@ -3,6 +3,12 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "allow": ["Bash(*)", "Read(*)", "Write(*)", "Edit(*)", "Glob(*)", "Grep(*)", "WebFetch(*)", "WebSearch(*)", "Browser(*)"]
+    "allow": [
+      "Read(*)", "Glob(*)", "Grep(*)", "WebFetch(*)", "WebSearch(*)",
+      "Write(./**)", "Edit(./**)",
+      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(ls *)", "Bash(cat *)",
+      "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)"
+    ],
+    "ask": ["Bash(rm *)", "Bash(*--force*)", "Bash(git push*)"]
   }
 }

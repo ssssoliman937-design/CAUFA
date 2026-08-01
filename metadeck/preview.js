@@ -22,25 +22,36 @@ const FACE_STAT_LABELS = {
   ATT: 'Attacking', DEF: 'Defending', ATH: 'Athleticism',
 };
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = 'index.html';
-    return;
-  }
-
-  const userSnap = await get(ref(db, `users/${user.uid}`));
-  if (!userSnap.exists() || userSnap.val().role !== 'admin') {
-    alert("Access Denied: Admins Only");
-    window.location.href = 'dashboard.html';
-    return;
-  }
-
+// ── TEST MODE: bypass auth with ?test=true ───────────────
+const testMode = new URLSearchParams(window.location.search).get('test') === 'true';
+if (testMode) {
+  console.log('🧪 TEST MODE - Auth bypassed (preview)');
   document.getElementById('screen-loading')?.classList.remove('active');
   document.getElementById('screen-stat')?.classList.add('active');
   renderMockResults();
   setupInteractivity();
   setupCalibration();
-});
+} else {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    const userSnap = await get(ref(db, `users/${user.uid}`));
+    if (!userSnap.exists() || userSnap.val().role !== 'admin') {
+      alert("Access Denied: Admins Only");
+      window.location.href = 'dashboard.html';
+      return;
+    }
+
+    document.getElementById('screen-loading')?.classList.remove('active');
+    document.getElementById('screen-stat')?.classList.add('active');
+    renderMockResults();
+    setupInteractivity();
+    setupCalibration();
+  });
+}
 
 function setupInteractivity() {
   const btnVote = document.getElementById('btn-show-vote');

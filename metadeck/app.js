@@ -45,6 +45,14 @@ togglePwBtn.addEventListener("click", () => {
   togglePwBtn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
 });
 
+// ── TEST MODE: bypass auth with ?test=true ───────────────
+const testMode = new URLSearchParams(window.location.search).get('test') === 'true';
+if (testMode) {
+  console.log('🧪 TEST MODE - Auth bypassed');
+  localStorage.setItem('testUser', JSON.stringify({uid: 'test-user', email: 'test@squad.com'}));
+  window.location.href = "dashboard.html?test=true";
+}
+
 // ── Already signed in → skip to dashboard ─────────────────
 onAuthStateChanged(auth, (user) => {
   if (user) window.location.href = "dashboard.html";

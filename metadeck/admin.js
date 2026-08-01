@@ -41,23 +41,31 @@ const modalTitle = document.getElementById('modal-title');
 const playerForm = document.getElementById('player-form');
 const btnCancelModal = document.getElementById('btn-cancel-modal');
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = 'index.html';
-    return;
-  }
+// ── TEST MODE: bypass auth with ?test=true ───────────────
+const testMode = new URLSearchParams(window.location.search).get('test') === 'true';
+if (testMode) {
+  console.log('🧪 TEST MODE - Auth bypassed (admin)');
+  currentUser = JSON.parse(localStorage.getItem('testUser') || '{"uid":"test-admin","email":"admin@squad.com"}');
+  initAdmin().catch(err => console.error('Init failed:', err));
+} else {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
 
-  const userRef = ref(db, `users/${user.uid}`);
-  const userSnap = await get(userRef);
-  if (!userSnap.exists() || userSnap.val().role !== 'admin') {
-    alert("Unauthorized. You must be an admin.");
-    window.location.href = 'dashboard.html';
-    return;
-  }
+    const userRef = ref(db, `users/${user.uid}`);
+    const userSnap = await get(userRef);
+    if (!userSnap.exists() || userSnap.val().role !== 'admin') {
+      alert("Unauthorized. You must be an admin.");
+      window.location.href = 'dashboard.html';
+      return;
+    }
 
-  currentUser = user;
-  initAdmin();
-});
+    currentUser = user;
+    initAdmin();
+  });
+}
 
 async function initAdmin() {
   await Promise.all([loadPlayers(), loadUsers()]);

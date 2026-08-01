@@ -113,15 +113,24 @@ function showScreen(name) {
   }
 }
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = 'index.html';
-    return;
-  }
-  S.user = user;
+// ── TEST MODE: bypass auth with ?test=true ───────────────
+const testMode = new URLSearchParams(window.location.search).get('test') === 'true';
+if (testMode) {
+  console.log('🧪 TEST MODE - Auth bypassed');
+  S.user = JSON.parse(localStorage.getItem('testUser') || '{"uid":"test-user","email":"test@squad.com"}');
   showScreen('loading');
-  await initDashboard();
-});
+  initDashboard().catch(err => console.error('Init failed:', err));
+} else {
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+    S.user = user;
+    showScreen('loading');
+    await initDashboard();
+  });
+}
 
 async function initDashboard() {
   try {

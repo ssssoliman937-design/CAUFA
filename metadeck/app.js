@@ -12,10 +12,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyB_Qb9cxN6rXY5K6SK-uvIpWNJIFG-2N9g",
   authDomain: "clowns-15441.firebaseapp.com",
   projectId: "clowns-15441",
-  storageBucket: "clowns-15441.appspot.com",
+  storageBucket: "clowns-15441.firebasestorage.app",
   messagingSenderId: "144013585965",
   appId: "1:144013585965:web:e3741f008a9386e967d2a4",
   databaseURL: "https://clowns-15441-default-rtdb.europe-west1.firebasedatabase.app"

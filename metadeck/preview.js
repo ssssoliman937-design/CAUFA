@@ -5,7 +5,7 @@ import { getCardTier, getTierBadgeInfo, calcOVR, deriveCardStats, POSITION_WEIGH
 import { generatePlayerCardHTML } from "./playerCard.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyB_Qb9cxN6rXY5K6SK-uvIpWNJIFG-2N9g",
   authDomain: "clowns-15441.firebaseapp.com",
   projectId: "clowns-15441",
   storageBucket: "clowns-15441.appspot.com",

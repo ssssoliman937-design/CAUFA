@@ -21,15 +21,21 @@ service cloud.firestore {
     }
 
     // Users: everyone signed in can read (progress table, comparisons).
-    // A user may update only their own non-privileged rating-progress
-    // fields; only the admin can change anyone's `role`, and only the
-    // Cloud Functions (admin SDK, bypasses rules) create/delete accounts.
+    // A brand-new user creates their OWN doc on first login (app.js /
+    // dashboard.js self-registration) — allowed as long as they can't
+    // hand themselves the admin role. Existing docs: a user may update
+    // only their own non-privileged rating-progress fields; only the
+    // admin can change anyone's `role`. Deleting a user account is
+    // admin-only (normally done via the Cloud Function's admin SDK,
+    // which bypasses these rules entirely).
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow update: if isSignedIn() && request.auth.uid == uid &&
-        !('role' in request.resource.data.diff(resource.data).affectedKeys()) ||
-        isAdmin();
-      allow create, delete: if isAdmin();
+      allow create: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == uid && !('role' in request.resource.data));
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == uid &&
+         !('role' in request.resource.data.diff(resource.data).affectedKeys()));
+      allow delete: if isAdmin();
     }
 
     // Votes: a user can only ever write their OWN vote docs; everyone

@@ -265,7 +265,7 @@ function beginRatingCurrentPlayer(prefillStats, prefillSkills) {
 
 function renderStatStep(direction = 'left') {
   const stat = S.statsForPlayer[S.currentStatIdx];
-  const player = S.players[S.currentPlayerIdx];
+  const player = S.players[activePlayerIdx()];
   const total = S.statsForPlayer.length;
 
   // Progress bar
@@ -274,7 +274,7 @@ function renderStatStep(direction = 'left') {
 
   // Player label
   statPlayerLabel.innerHTML =
-    `Player ${S.currentPlayerIdx + 1} of ${S.players.length} &middot; <span class="highlight-name">${player.name.toUpperCase()}</span>`;
+    `Player ${activePlayerIdx() + 1} of ${S.players.length} &middot; <span class="highlight-name">${player.name.toUpperCase()}</span>`;
 
   // Category badge
   statCategoryBadge.innerHTML = `<span class="cat-indicator-dot"></span> ${stat.category.toUpperCase()}`;
@@ -415,13 +415,20 @@ function isLastNewPlayer() {
   return S.editingIdx === null && S.currentPlayerIdx === S.players.length - 1;
 }
 
+// While editing a draft from Review, the player being edited is
+// S.editingIdx — S.currentPlayerIdx must stay untouched (it's the
+// "all players drafted" progress marker persisted to localStorage).
+function activePlayerIdx() {
+  return S.editingIdx !== null ? S.editingIdx : S.currentPlayerIdx;
+}
+
 function showSkillsStep() {
   renderSkillsStep();
   showScreen('skills');
 }
 
 function renderSkillsStep() {
-  const player = S.players[S.currentPlayerIdx];
+  const player = S.players[activePlayerIdx()];
   skillsPlayerLabel.innerHTML = `Skills for <span class="highlight-name">${player.name.toUpperCase()}</span>`;
 
   skillsCategories.innerHTML = '';
@@ -462,7 +469,7 @@ backToStatsBtn.addEventListener('click', () => {
 });
 
 finishPlayerBtn.addEventListener('click', () => {
-  const player = S.players[S.currentPlayerIdx];
+  const player = S.players[activePlayerIdx()];
   const draft = {
     playerId: player.id,
     playerName: player.name,
@@ -548,7 +555,6 @@ function openDraftForEdit(idx) {
   const draft = S.draftVotes[idx];
   if (!draft) return;
   S.editingIdx = idx;
-  S.currentPlayerIdx = idx;
   beginRatingCurrentPlayer(draft.stats, draft.skills);
 }
 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MetaDeck - Card Preview</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="premium-preview-header">
+      <div class="pph-top">
+        <div class="pph-brand">
+          <div class="pph-icon"><i class="fa-solid fa-eye"></i></div>
+          <div class="pph-title">
+            <h2>METADECK</h2>
+            <span>ADMIN PREVIEW</span>
+          </div>
+        </div>
+        
+        <div class="pph-actions">
+          <div class="menu-wrapper">
+            <button id="menu-btn" class="pph-user-btn" aria-label="Toggle Preview Menu">
+              <i class="fa-solid fa-sliders"></i>
+              <span>Preview Mode</span>
+              <i class="fa-solid fa-chevron-down pph-chevron"></i>
+            </button>
+            <div id="dropdown-menu" class="dropdown-menu">
+              <a href="dashboard.html" class="dropdown-item"><i class="fa-solid fa-house"></i> Home</a>
+              <a href="admin.html" class="dropdown-item"><i class="fa-solid fa-gear"></i> Admin</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pph-nav">
+        <button id="btn-show-vote" class="pph-nav-btn active">
+          <i class="fa-solid fa-check-to-slot"></i> Voting
+        </button>
+        <button id="btn-show-results" class="pph-nav-btn">
+          <i class="fa-solid fa-chart-simple"></i> Results
+        </button>
+        <button id="btn-show-calibrate" class="pph-nav-btn">
+          <i class="fa-solid fa-sliders"></i> Calibrate
+        </button>
+      </div>
+    </header>
+
+    <div id="screen-loading" class="screen active">
+      <div class="loading-spinner"></div>
+      <p>Checking Admin Auth...</p>
+    </div>
+
+    <!-- MOCK VOTING SCREEN -->
+    <div id="screen-stat" class="screen">
+      <div class="stat-header">
+        <div id="stat-progress-fill" style="width: 30%;"></div>
+        <p id="stat-player-label">RATING: MOCK PLAYER · PLAYER 1 OF 11</p>
+        <strong id="stat-category-badge" class="cat-attacking"><i class="fa-solid fa-futbol"></i> ATTACKING</strong>
+      </div>
+
+      <div class="stat-info-area" id="stat-info-area">
+        <h3 id="stat-name-display">Finishing</h3>
+        <p id="stat-desc-display">Ability to score in front of goal including 1v1s and shooting situations.</p>
+        <div id="stat-prev-ratings" class="stat-prev-ratings" hidden></div>
+      </div>
+
+      <div class="stat-input-area cat-attacking">
+        <label>Rating</label>
+        <input type="text" id="stat-value-input" inputmode="numeric" value="85" min="40" max="99">
+        <input type="range" id="stat-slider" min="40" max="99" value="85">
+      </div>
+
+      <div class="stat-nav-bar">
+        <button id="prev-stat-btn" class="secondary" disabled>← Prev</button>
+        <span id="stat-counter">1 / 21</span>
+        <button id="next-stat-btn">Next →</button>
+      </div>
+    </div>
+
+    <!-- MOCK RESULTS SCREEN -->
+    <div id="screen-results" class="screen">
+      <h2>Results</h2>
+      <div id="cards-carousel" class="results-carousel">
+        <!-- Rendered by preview.js -->
+      </div>
+      <div id="carousel-dots"></div>
+    </div>
+
+    <!-- CALIBRATE OVR SCREEN -->
+    <div id="screen-calibrate" class="screen">
+      <h2>Calibrate OVR</h2>
+      <div style="margin-bottom: 20px;">
+        <label for="calib-pos" style="color: var(--text-muted); font-size: 0.9rem;">Position:</label>
+        <select id="calib-pos" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); padding: 8px; border-radius: var(--radius-md); margin-left: 10px;">
+          <!-- Options populated by JS -->
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div id="calib-inputs" style="flex: 1; min-width: 300px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <!-- Inputs populated by JS -->
+        </div>
+        <div style="flex: 1; min-width: 300px; display: flex; align-items: center; justify-content: center;">
+          <div id="calib-card-container" style="width: 100%; max-width: 400px;">
+            <!-- Dummy card rendered here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>Made by Ammar Bakr</footer>
+  </div>
+
+  <script type="module" src="preview.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

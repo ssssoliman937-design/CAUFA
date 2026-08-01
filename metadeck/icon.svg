@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <path d="M256 96l128 48v96c0 96-56 168-128 192-72-24-128-96-128-192v-96l128-48z"
+        fill="none" stroke="#3b82f6" stroke-width="20"/>
+  <path d="M256 96l128 48v96c0 96-56 168-128 192-72-24-128-96-128-192v-96l128-48z"
+        fill="#3b82f6" fill-opacity="0.12"/>
+  <circle cx="256" cy="248" r="58" fill="#3b82f6"/>
+  <text x="256" y="264" font-family="system-ui, sans-serif" font-weight="900" font-size="56"
+        fill="#0f172a" text-anchor="middle">MD</text>
+</svg>

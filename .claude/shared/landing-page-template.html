@@ -1,0 +1,49 @@
+<!-- Base landing page template for tools. designer/web-dev fill in the marked sections; don't rebuild structure from scratch. -->
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!-- TOOL_NAME --></title>
+<meta name="description" content="<!-- ONE_LINE_VALUE_PROP -->">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/3.4.1/tailwind.min.js"></script>
+</head>
+<body class="bg-neutral-950 text-neutral-100">
+
+<!-- HERO: name + one sentence + screenshot/GIF + primary download button -->
+<section id="hero" class="max-w-3xl mx-auto px-6 py-20 text-center">
+  <h1 class="text-4xl font-bold"><!-- TOOL_NAME --></h1>
+  <p class="mt-4 text-neutral-400"><!-- ONE_LINE_VALUE_PROP --></p>
+  <!-- SCREENSHOT_OR_GIF -->
+  <a href="#" class="inline-block mt-8 px-6 py-3 rounded-lg bg-indigo-600 font-semibold">
+    تحميل <!-- VERSION --> · <!-- SIZE --> · <!-- DATE -->
+  </a>
+</section>
+
+<!-- REQUIREMENTS -->
+<section class="max-w-3xl mx-auto px-6 py-8 text-sm text-neutral-400">
+  المتطلبات: <!-- OS_VERSION, RUNTIME, ADMIN_NEEDED -->
+</section>
+
+<!-- TRUST — do not skip, this converts modding-tool downloads -->
+<section class="max-w-3xl mx-auto px-6 py-10 border-t border-neutral-800">
+  <h2 class="text-xl font-semibold">هل هي آمنة؟</h2>
+  <ul class="mt-3 space-y-2 text-neutral-400 text-sm">
+    <li>SHA-256: <code><!-- HASH --></code></li>
+    <li><a href="<!-- VIRUSTOTAL_LINK -->" class="underline">نتيجة فحص VirusTotal</a></li>
+    <li><!-- SMARTSCREEN_EXPLANATION --></li>
+    <li><a href="<!-- GITHUB_LINK -->" class="underline">الكود المصدري / الإصدارات</a></li>
+  </ul>
+</section>
+
+<!-- CHANGELOG -->
+<section class="max-w-3xl mx-auto px-6 py-10 border-t border-neutral-800">
+  <h2 class="text-xl font-semibold">آخر التحديثات</h2>
+  <!-- CHANGELOG_ENTRIES -->
+</section>
+
+<footer class="max-w-3xl mx-auto px-6 py-10 text-sm text-neutral-500">
+  <!-- CONTACT_OR_ISSUES_LINK -->
+</footer>
+</body>
+</html>

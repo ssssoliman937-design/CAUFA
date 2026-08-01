@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MetaDeck - Admin</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="app-container">
+    <div class="header">
+      <div class="brand-logo">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h2>METADECK ADMIN</h2>
+      </div>
+      <div class="header-actions">
+        <div class="menu-wrapper">
+          <button id="menu-btn" class="user-menu-btn" aria-label="Toggle Admin Menu">
+            <i class="fa-solid fa-user-shield avatar-icon"></i>
+            <span id="header-username">Admin</span>
+            <i class="fa-solid fa-chevron-down chevron-icon"></i>
+          </button>
+          <div id="dropdown-menu" class="dropdown-menu">
+            <a href="dashboard.html" class="dropdown-item"><i class="fa-solid fa-house"></i> Dashboard</a>
+            <a href="compare.html" class="dropdown-item"><i class="fa-solid fa-scale-balanced"></i> Compare Players</a>
+            <a href="preview.html" class="dropdown-item"><i class="fa-solid fa-mobile-screen"></i> Card Preview</a>
+            <button id="logout-btn" class="dropdown-item danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-main">
+      <div class="admin-section">
+        <h3>
+          Player Management
+          <button id="btn-add-player">+ Add Player</button>
+        </h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="players-list">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h3>
+          Users
+          <button id="btn-add-user">+ Add User</button>
+        </h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-list">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="admin-section danger-zone">
+        <h3>⚠ Danger Zone</h3>
+        <p>Resetting votes will delete all current votes and reset everyone's progress. This action cannot be undone.</p>
+        <button id="btn-reset-votes">Reset All Votes</button>
+      </div>
+    </div>
+
+    <div id="player-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3 id="modal-title">Add Player</h3>
+        <form id="player-form">
+          <input type="hidden" id="player-id">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="player-name" required placeholder="Player name">
+          </div>
+          <div class="form-group">
+            <label>Position</label>
+            <select id="player-position">
+              <option value="CF">CF</option>
+              <option value="SS">SS</option>
+              <option value="LWF">LWF</option>
+              <option value="RWF">RWF</option>
+              <option value="AMF">AMF</option>
+              <option value="LMF">LMF</option>
+              <option value="RMF">RMF</option>
+              <option value="CMF">CMF</option>
+              <option value="DMF">DMF</option>
+              <option value="LB">LB</option>
+              <option value="CB">CB</option>
+              <option value="RB">RB</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Order</label>
+            <input type="number" id="player-order" required placeholder="Display order">
+          </div>
+          <div class="form-group">
+            <label>Linked User ID (Optional)</label>
+            <input type="text" id="player-linked-uid" placeholder="Firebase UID">
+          </div>
+
+          <div class="form-group">
+            <label>Special Skills</label>
+            <div id="special-skills-grid" class="checkbox-grid"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Posters</label>
+            <div id="posters-grid" class="poster-grid"></div>
+            <div id="poster-preview" class="poster-preview hidden">
+              <div class="poster-preview-title">Preview (median of current votes)</div>
+              <div id="poster-preview-body"></div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="submit" id="btn-save-player">Save</button>
+            <button type="button" id="btn-cancel-modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="user-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>Add User</h3>
+        <form id="user-form">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="new-username" required placeholder="Username (no spaces)">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="text" id="new-password" required placeholder="Password" minlength="6">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" id="btn-save-user">Create User</button>
+            <button type="button" id="btn-cancel-user-modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer>Made by Ammar Bakr</footer>
+  </div>
+  <script type="module" src="admin.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>

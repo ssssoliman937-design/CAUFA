@@ -1,0 +1,119 @@
+/* ══════════════════════════════════════════════════════════
+   MetaDeck Compare — player-vs-player screen
+   compare.css
+   ══════════════════════════════════════════════════════════ */
+
+#screen-picker h2,
+#screen-compare h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 0 0 4px;
+}
+.compare-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 18px;
+}
+
+.picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.picker-chip {
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 9px 16px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+.picker-chip.on {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: var(--primary);
+  color: #cfe2ff;
+}
+.picker-chip.on::before {
+  content: "✓ ";
+  color: var(--primary);
+  font-weight: 800;
+}
+
+#btn-compare {
+  width: 100%;
+}
+
+.compare-toolbar {
+  margin-bottom: 16px;
+}
+.compare-toolbar button {
+  width: auto;
+}
+
+.compare-table {
+  overflow-x: auto;
+}
+.compare-grid {
+  display: grid;
+  width: 100%;
+  min-width: 480px;
+  border-collapse: collapse;
+}
+.compare-head-row,
+.compare-stat-row {
+  display: contents;
+}
+.compare-cell {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  color: var(--text-main);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.compare-cell.label-cell {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.compare-cell.player-head {
+  font-weight: 800;
+  color: var(--primary);
+  font-size: 0.8rem;
+}
+.compare-cell.best {
+  color: #34d399;
+  font-weight: 800;
+}
+.compare-skills-block {
+  margin-top: 24px;
+  display: grid;
+  gap: 16px;
+}
+.compare-skills-card {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.compare-skills-card h4 {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+.compare-skills-card .skill-chip {
+  margin: 2px;
+  display: inline-block;
+}
+.compare-skills-card .none {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}

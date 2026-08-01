@@ -1,5 +1,5 @@
 // =========================================================
-//  MetaDeck — Player Comparison
+//  MetaDeck — Player Comparison (Realtime Database)
 //  compare.js
 // =========================================================
 
@@ -8,9 +8,8 @@ import {
   getAuth, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc,
-  collection, getDocs, query, orderBy
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  getDatabase, ref, get
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 import {
   medianOf, deriveCardStats, calcOVR, STATS_OUTFIELD
@@ -18,17 +17,18 @@ import {
 import { tallySkillConsensus, applySkillBoosts, applyPosterBoosts } from "./skillsData.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBi-sGCeFTAj45k65jRQvwBks5jDW0Uj2o",
-  authDomain: "efhub-f64cf.firebaseapp.com",
-  projectId: "efhub-f64cf",
-  storageBucket: "efhub-f64cf.firebasestorage.app",
-  messagingSenderId: "540581635927",
-  appId: "1:540581635927:web:7935e69adc3f73cc544012"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "clowns-15441.firebaseapp.com",
+  projectId: "clowns-15441",
+  storageBucket: "clowns-15441.appspot.com",
+  messagingSenderId: "144013585965",
+  appId: "1:144013585965:web:e3741f008a9386e967d2a4",
+  databaseURL: "https://clowns-15441-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getDatabase(app);
 
 let allPlayerCards = [];
 let selectedIds = new Set();
@@ -38,19 +38,22 @@ const SCREENS = {
   picker: document.getElementById('screen-picker'),
   compare: document.getElementById('screen-compare'),
 };
+
 function showScreen(name) {
-  Object.values(SCREENS).forEach(s => s.classList.remove('active'));
-  SCREENS[name].classList.add('active');
+  Object.values(SCREENS).forEach(s => s?.classList.remove('active'));
+  SCREENS[name]?.classList.add('active');
 }
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
 
-  const userDoc = await getDoc(doc(db, 'users', user.uid));
-  const userData = userDoc.exists() ? userDoc.data() : {};
-  document.getElementById('header-username').textContent = userData.username || user.email.split('@')[0];
+  const userSnap = await get(ref(db, `users/${user.uid}`));
+  const userData = userSnap.exists() ? userSnap.val() : {};
+  const headerUsername = document.getElementById('header-username');
+  if (headerUsername) headerUsername.textContent = userData.username || user.email.split('@')[0];
+
   if (userData.role === 'admin') {
-    document.getElementById('header-admin-link').classList.remove('hidden');
+    document.getElementById('header-admin-link')?.classList.remove('hidden');
   }
 
   await loadAllPlayerCards();
@@ -59,11 +62,22 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function loadAllPlayerCards() {
-  const playersSnap = await getDocs(query(collection(db, 'players'), orderBy('order')));
-  const players = playersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const playersSnap = await get(ref(db, 'players'));
+  const players = [];
+  if (playersSnap.exists()) {
+    const data = playersSnap.val();
+    Object.entries(data).forEach(([id, player]) => {
+      players.push({ id, ...player });
+    });
+    players.sort((a, b) => (a.order || 999) - (b.order || 999));
+  }
 
-  const votesSnap = await getDocs(collection(db, 'votes'));
-  const allVotes = votesSnap.docs.map(d => d.data());
+  const votesSnap = await get(ref(db, 'votes'));
+  const allVotes = [];
+  if (votesSnap.exists()) {
+    const data = votesSnap.val();
+    Object.values(data).forEach(v => allVotes.push(v));
+  }
 
   allPlayerCards = players.map(player => {
     const playerVotes = allVotes.filter(v => v.player_id === player.id);
@@ -94,6 +108,8 @@ async function loadAllPlayerCards() {
 
 function renderPicker() {
   const chips = document.getElementById('picker-chips');
+  if (!chips) return;
+
   chips.innerHTML = allPlayerCards.map(p => `
     <div class="picker-chip" data-id="${p.id}">${p.name} (${p.position || '-'})</div>
   `).join('');
@@ -103,22 +119,24 @@ function renderPicker() {
       const id = chip.dataset.id;
       if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
       chip.classList.toggle('on');
-      document.getElementById('btn-compare').disabled = selectedIds.size < 2;
+      const btnCompare = document.getElementById('btn-compare');
+      if (btnCompare) btnCompare.disabled = selectedIds.size < 2;
     });
   });
 }
 
-document.getElementById('btn-compare').addEventListener('click', () => {
+document.getElementById('btn-compare')?.addEventListener('click', () => {
   renderComparison(allPlayerCards.filter(p => selectedIds.has(p.id)));
   showScreen('compare');
 });
 
-document.getElementById('btn-back-to-picker').addEventListener('click', () => {
+document.getElementById('btn-back-to-picker')?.addEventListener('click', () => {
   showScreen('picker');
 });
 
 function renderComparison(players) {
   const box = document.getElementById('compare-table');
+  if (!box) return;
 
   const rows = [
     { label: 'OVR', get: p => p.ovr },
@@ -166,8 +184,7 @@ function renderComparison(players) {
   box.innerHTML = html;
 }
 
-// ── Header logout + menu ───────────────────────────────────
-document.getElementById('logout-btn').addEventListener('click', async () => {
+document.getElementById('logout-btn')?.addEventListener('click', async () => {
   await signOut(auth);
   window.location.href = 'index.html';
 });

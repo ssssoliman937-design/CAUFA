@@ -8,21 +8,22 @@ import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  getDatabase, ref, child, get, set, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBi-sGCeFTAj45k65jRQvwBks5jDW0Uj2o",
-  authDomain: "efhub-f64cf.firebaseapp.com",
-  projectId: "efhub-f64cf",
-  storageBucket: "efhub-f64cf.firebasestorage.app",
-  messagingSenderId: "540581635927",
-  appId: "1:540581635927:web:7935e69adc3f73cc544012"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "clowns-15441.firebaseapp.com",
+  projectId: "clowns-15441",
+  storageBucket: "clowns-15441.appspot.com",
+  messagingSenderId: "144013585965",
+  appId: "1:144013585965:web:e3741f008a9386e967d2a4",
+  databaseURL: "https://clowns-15441-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db   = getFirestore(app);
+const db   = getDatabase(app);
 
 // ── DOM ───────────────────────────────────────────────────
 const loginForm     = document.getElementById("login-form");
@@ -66,15 +67,15 @@ loginForm.addEventListener("submit", async (e) => {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
 
-    // Auto-create users/{uid} doc on first login
-    const userRef  = doc(db, "users", cred.user.uid);
-    const userSnap = await getDoc(userRef);
+    // Auto-create users/{uid} doc on first login in Realtime DB
+    const userRef = ref(db, `users/${cred.user.uid}`);
+    const userSnap = await get(userRef);
     if (!userSnap.exists()) {
-      await setDoc(userRef, {
+      await set(userRef, {
         username:             raw,
         has_voted:            false,
         current_player_index: 0,
-        created_at:           serverTimestamp(),
+        created_at:           new Date().toISOString(),
       });
     }
 

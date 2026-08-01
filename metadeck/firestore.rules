@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Players: everyone signed in can read (to rate + view cards).
+    // Only the admin can create/edit/delete a player (name, position,
+    // specialSkills, posters...).
+    match /players/{playerId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users: everyone signed in can read (progress table, comparisons).
+    // A user may update only their own non-privileged rating-progress
+    // fields; only the admin can change anyone's `role`, and only the
+    // Cloud Functions (admin SDK, bypasses rules) create/delete accounts.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid == uid &&
+        !('role' in request.resource.data.diff(resource.data).affectedKeys()) ||
+        isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    // Votes: a user can only ever write their OWN vote docs; everyone
+    // signed in can read (needed to build median stats + results).
+    match /votes/{voteId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.resource.data.voter_uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+  }
+}

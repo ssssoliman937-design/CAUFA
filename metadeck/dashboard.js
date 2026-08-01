@@ -11,16 +11,17 @@ import {
   getFirestore,
   doc, getDoc, setDoc, updateDoc,
   collection, getDocs, onSnapshot,
-  query, orderBy, where,
+  query, orderBy,
   serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
-  roundAvg, deriveCardStats, POSITION_WEIGHTS, DEFAULT_WEIGHTS,
+  roundAvg, medianOf, deriveCardStats, POSITION_WEIGHTS, DEFAULT_WEIGHTS,
   calcOVR, getCardTier, getTierBadgeInfo,
   STATS_OUTFIELD
 } from "./ovrCalculator.js";
 import { generatePlayerCardHTML } from "./playerCard.js";
+import { SKILL_CATEGORIES, tallySkillConsensus, applySkillBoosts, applyPosterBoosts } from "./skillsData.js";
 
 // ── Firebase ──────────────────────────────────────────────
 const firebaseConfig = {
@@ -48,16 +49,6 @@ const db = getFirestore(app);
 // Note: Calculation logic has been extracted to ovrCalculator.js
 
 
-function medianOf(arr) {
-  if (!arr.length) return 50;
-  const sorted = [...arr].filter(v => typeof v === 'number').sort((a, b) => a - b);
-  if (!sorted.length) return 50;
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 !== 0
-    ? sorted[mid]
-    : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-}
-
 // ══════════════════════════════════════════════════════════
 // APP STATE
 // ══════════════════════════════════════════════════════════
@@ -69,10 +60,38 @@ const S = {
   currentPlayerIdx: 0,      // index into S.players
   currentStatIdx: 0,      // index into S.statsForPlayer
   currentVote: {},     // { OFA: 50, ... } in-memory for current player
+  currentSkills: new Set(),  // selected regular-skill names for current player
+  editingIdx: null,     // draftVotes index being re-opened from Review, or null
+  draftVotes: [],     // [{ playerId, playerName, stats, skills }] buffered locally until final Done
   statsForPlayer: [],     // STATS_OUTFIELD
-  pastVotes: [],     // [{ name, votes }] — completed players this session
+  pastVotes: [],     // [{ name, votes }] — completed players this session (from draftVotes)
   finalResults: [],     // completed results
 };
+
+// ── Local draft persistence (survives refresh before final Done) ──
+function draftKey() { return `metadeck_draft_${S.user.uid}`; }
+function saveDraftLocal() {
+  try {
+    localStorage.setItem(draftKey(), JSON.stringify({
+      draftVotes: S.draftVotes,
+      currentPlayerIdx: S.currentPlayerIdx,
+    }));
+  } catch (e) { console.warn('saveDraftLocal failed:', e); }
+}
+function loadDraftLocal() {
+  try {
+    const raw = localStorage.getItem(draftKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function clearDraftLocal() {
+  try { localStorage.removeItem(draftKey()); } catch (e) {}
+}
+function rebuildPastVotes() {
+  S.pastVotes = S.draftVotes
+    .map((d, i) => (d ? { name: S.players[i]?.name || d.playerName, votes: d.stats } : null))
+    .filter(Boolean);
+}
 
 // ══════════════════════════════════════════════════════════
 // DOM REFERENCES
@@ -82,7 +101,9 @@ const SCREENS = {
   loading: document.getElementById('screen-loading'),
   intro: document.getElementById('screen-intro'),
   stat: document.getElementById('screen-stat'),
+  skills: document.getElementById('screen-skills'),
   playerDone: document.getElementById('screen-player-done'),
+  review: document.getElementById('screen-review'),
   waiting: document.getElementById('screen-waiting'),
   results: document.getElementById('screen-results'),
 };
@@ -103,6 +124,16 @@ const statCounter = document.getElementById('stat-counter');
 const prevStatBtn = document.getElementById('prev-stat-btn');
 const nextStatBtn = document.getElementById('next-stat-btn');
 const statPrevRatings = document.getElementById('stat-prev-ratings');
+
+// Skills step elements
+const skillsPlayerLabel = document.getElementById('skills-player-label');
+const skillsCategories = document.getElementById('skills-categories');
+const backToStatsBtn = document.getElementById('back-to-stats-btn');
+const finishPlayerBtn = document.getElementById('finish-player-btn');
+
+// Review step elements
+const reviewList = document.getElementById('review-list');
+const btnSubmitAll = document.getElementById('btn-submit-all');
 
 // ══════════════════════════════════════════════════════════
 // SCREEN MANAGEMENT
@@ -166,34 +197,25 @@ async function initDashboard() {
       return;
     }
 
-    S.currentPlayerIdx = S.userData.current_player_index ?? 0;
-
-    // ── Load past votes for reference pills ───────────────
-    try {
-      const votesSnap = await getDocs(query(collection(db, 'votes'), where('voter_uid', '==', S.user.uid)));
-      const userVotesMap = {};
-      votesSnap.docs.forEach(d => {
-        const vData = d.data();
-        userVotesMap[vData.player_id] = vData.stats;
-      });
-
-      S.pastVotes = [];
-      S.players.forEach(p => {
-        if (userVotesMap[p.id]) {
-          S.pastVotes.push({
-            name: p.name,
-            votes: userVotesMap[p.id]
-          });
-        }
-      });
-    } catch (e) {
-      console.warn("Could not load past votes:", e);
-      S.pastVotes = [];
+    // ── Branch: already fully submitted ──────────────────
+    if (S.userData.has_voted) {
+      await checkAndTransitionToResults();
+      return;
     }
 
-    // ── Branch: has voted / all done / resume ────────────
-    if (S.userData.has_voted || S.currentPlayerIdx >= S.players.length) {
-      await checkAndTransitionToResults();
+    // ── Resume in-progress draft (buffered locally until final Done) ──
+    const localDraft = loadDraftLocal();
+    if (localDraft && Array.isArray(localDraft.draftVotes) && localDraft.draftVotes.length === S.players.length) {
+      S.draftVotes = localDraft.draftVotes;
+      S.currentPlayerIdx = localDraft.currentPlayerIdx ?? 0;
+    } else {
+      S.currentPlayerIdx = S.userData.current_player_index ?? 0;
+      S.draftVotes = new Array(S.players.length).fill(null);
+    }
+    rebuildPastVotes();
+
+    if (S.currentPlayerIdx >= S.players.length) {
+      showReview();
       return;
     }
 
@@ -230,10 +252,11 @@ document.getElementById('start-btn').addEventListener('click', () => {
 // STAT STEP
 // ══════════════════════════════════════════════════════════
 
-function beginRatingCurrentPlayer() {
+function beginRatingCurrentPlayer(prefillStats, prefillSkills) {
   S.statsForPlayer = STATS_OUTFIELD;
-  S.currentVote = {};
-  S.statsForPlayer.forEach(s => { S.currentVote[s.code] = 50; });
+  S.currentVote = prefillStats ? { ...prefillStats } : {};
+  if (!prefillStats) S.statsForPlayer.forEach(s => { S.currentVote[s.code] = 50; });
+  S.currentSkills = new Set(prefillSkills || []);
   S.currentStatIdx = 0;
 
   renderStatStep('left');
@@ -368,7 +391,7 @@ prevStatBtn.addEventListener('click', () => {
   }
 });
 
-nextStatBtn.addEventListener('click', async () => {
+nextStatBtn.addEventListener('click', () => {
   // Commit the current value (in case input is focused)
   const val = clamp(parseInt(statValueInput.value) || 50);
   S.currentVote[S.statsForPlayer[S.currentStatIdx].code] = val;
@@ -377,64 +400,102 @@ nextStatBtn.addEventListener('click', async () => {
     S.currentStatIdx++;
     renderStatStep('left');
   } else {
-    // All stats done — save this player's vote
-    await savePlayerVote();
+    // All stats done — move to skill selection for this player
+    showSkillsStep();
   }
 });
 
 // (Swipe gestures removed by design)
 
 // ══════════════════════════════════════════════════════════
-// SAVE VOTE + ADVANCE
+// SKILL SELECTION STEP
 // ══════════════════════════════════════════════════════════
 
-async function savePlayerVote() {
-  const player = S.players[S.currentPlayerIdx];
-
-  nextStatBtn.disabled = true;
-  nextStatBtn.textContent = 'Saving…';
-
-  try {
-    // Write vote doc
-    const voteId = `${S.user.uid}_${player.id}`;
-    await setDoc(doc(db, 'votes', voteId), {
-      voter_uid: S.user.uid,
-      player_id: player.id,
-      stats: { ...S.currentVote },
-      submitted_at: serverTimestamp(),
-    });
-
-    // Advance index
-    const nextIdx = S.currentPlayerIdx + 1;
-    const allDone = nextIdx >= S.players.length;
-
-    await updateDoc(doc(db, 'users', S.user.uid), {
-      current_player_index: nextIdx,
-      ...(allDone ? { has_voted: true } : {}),
-    });
-
-    S.userData.current_player_index = nextIdx;
-    S.currentPlayerIdx = nextIdx;
-
-    // Record this player's votes for the reference strip
-    S.pastVotes.push({ name: player.name, votes: { ...S.currentVote } });
-
-    if (allDone) {
-      await checkAndTransitionToResults();
-    } else {
-      showPlayerDone(player.name, nextIdx);
-    }
-
-  } catch (err) {
-    console.error('savePlayerVote error:', err);
-    nextStatBtn.disabled = false;
-    nextStatBtn.textContent = 'Finish Player ✓';
-    alert('Could not save. Check your connection and try again.');
-  }
+function isLastNewPlayer() {
+  return S.editingIdx === null && S.currentPlayerIdx === S.players.length - 1;
 }
 
+function showSkillsStep() {
+  renderSkillsStep();
+  showScreen('skills');
+}
+
+function renderSkillsStep() {
+  const player = S.players[S.currentPlayerIdx];
+  skillsPlayerLabel.innerHTML = `Skills for <span class="highlight-name">${player.name.toUpperCase()}</span>`;
+
+  skillsCategories.innerHTML = '';
+  for (const [cat, skills] of Object.entries(SKILL_CATEGORIES)) {
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+    block.innerHTML = `<div class="cat-title"><span class="bar"></span>${cat}</div><div class="tiles"></div>`;
+    const tilesEl = block.querySelector('.tiles');
+
+    skills.forEach(skill => {
+      const tile = document.createElement('div');
+      tile.className = 'tile' + (S.currentSkills.has(skill) ? ' on' : '');
+      tile.textContent = skill;
+      tile.addEventListener('click', () => {
+        if (S.currentSkills.has(skill)) {
+          S.currentSkills.delete(skill);
+          tile.classList.remove('on');
+        } else {
+          S.currentSkills.add(skill);
+          tile.classList.add('on');
+        }
+      });
+      tilesEl.appendChild(tile);
+    });
+
+    skillsCategories.appendChild(block);
+  }
+
+  finishPlayerBtn.textContent = S.editingIdx !== null
+    ? 'Save Changes'
+    : (isLastNewPlayer() ? 'Finish & Review All' : 'Save & Continue');
+}
+
+backToStatsBtn.addEventListener('click', () => {
+  S.currentStatIdx = S.statsForPlayer.length - 1;
+  renderStatStep('right');
+  showScreen('stat');
+});
+
+finishPlayerBtn.addEventListener('click', () => {
+  const player = S.players[S.currentPlayerIdx];
+  const draft = {
+    playerId: player.id,
+    playerName: player.name,
+    stats: { ...S.currentVote },
+    skills: Array.from(S.currentSkills),
+  };
+
+  if (S.editingIdx !== null) {
+    S.draftVotes[S.editingIdx] = draft;
+    S.editingIdx = null;
+    saveDraftLocal();
+    rebuildPastVotes();
+    showReview();
+    return;
+  }
+
+  S.draftVotes[S.currentPlayerIdx] = draft;
+  saveDraftLocal();
+  rebuildPastVotes();
+
+  const nextIdx = S.currentPlayerIdx + 1;
+  updateDoc(doc(db, 'users', S.user.uid), { current_player_index: nextIdx }).catch(() => {});
+  S.currentPlayerIdx = nextIdx;
+
+  if (nextIdx >= S.players.length) {
+    showReview();
+  } else {
+    showPlayerDone(player.name, nextIdx);
+  }
+});
+
 // ══════════════════════════════════════════════════════════
-// PLAYER DONE SCREEN
+// PLAYER DONE SCREEN (interstitial between players)
 // ══════════════════════════════════════════════════════════
 
 function showPlayerDone(playerName, nextIdx) {
@@ -451,6 +512,79 @@ function showPlayerDone(playerName, nextIdx) {
 
 document.getElementById('continue-btn').addEventListener('click', () => {
   showIntro();
+});
+
+// ══════════════════════════════════════════════════════════
+// REVIEW SCREEN — edit any player before final submit
+// ══════════════════════════════════════════════════════════
+
+function showReview() {
+  renderReview();
+  showScreen('review');
+}
+
+function renderReview() {
+  reviewList.innerHTML = S.draftVotes.map((d, i) => {
+    if (!d) return '';
+    return `
+      <div class="review-item">
+        <div class="review-avatar"></div>
+        <div class="review-info">
+          <div class="review-name">${d.playerName}</div>
+          <div class="review-sub">${Object.keys(d.stats).length} stats &middot; ${d.skills.length} skills selected</div>
+        </div>
+        <button class="review-edit" data-idx="${i}">Edit</button>
+      </div>`;
+  }).join('');
+
+  reviewList.querySelectorAll('.review-edit').forEach(btn => {
+    btn.addEventListener('click', () => {
+      openDraftForEdit(parseInt(btn.dataset.idx, 10));
+    });
+  });
+}
+
+function openDraftForEdit(idx) {
+  const draft = S.draftVotes[idx];
+  if (!draft) return;
+  S.editingIdx = idx;
+  S.currentPlayerIdx = idx;
+  beginRatingCurrentPlayer(draft.stats, draft.skills);
+}
+
+btnSubmitAll.addEventListener('click', async () => {
+  btnSubmitAll.disabled = true;
+  btnSubmitAll.textContent = 'Submitting…';
+
+  try {
+    const batch = writeBatch(db);
+    S.draftVotes.forEach(draft => {
+      if (!draft) return;
+      const voteId = `${S.user.uid}_${draft.playerId}`;
+      batch.set(doc(db, 'votes', voteId), {
+        voter_uid: S.user.uid,
+        player_id: draft.playerId,
+        stats: draft.stats,
+        skills: draft.skills,
+        submitted_at: serverTimestamp(),
+      });
+    });
+    batch.update(doc(db, 'users', S.user.uid), {
+      current_player_index: S.players.length,
+      has_voted: true,
+    });
+    await batch.commit();
+
+    clearDraftLocal();
+    S.userData.has_voted = true;
+    await checkAndTransitionToResults();
+
+  } catch (err) {
+    console.error('submitAll error:', err);
+    btnSubmitAll.disabled = false;
+    btnSubmitAll.textContent = 'Done — Submit All ✓';
+    alert('Could not submit. Check your connection and try again.');
+  }
 });
 
 document.getElementById('logout-for-later-btn').addEventListener('click', async () => {
@@ -530,15 +664,32 @@ async function buildResults() {
         medianStats[def.code] = medianOf(vals);
       });
 
-      const cardStats = deriveCardStats(medianStats);
-      const ovr = calcOVR(medianStats, player.position);
+      // Regular skills granted by voter consensus (3+ agree), tiered by count
+      const grantedSkills = tallySkillConsensus(playerVotes.map(v => v.skills || []));
+      const boostedStats = applySkillBoosts(medianStats, grantedSkills);
+
+      // Admin-assigned posters — only the ones currently switched on affect the card
+      const activePosters = Object.entries(player.posters || {})
+        .filter(([, on]) => !!on)
+        .map(([name]) => name);
+      const finalStats = applyPosterBoosts(boostedStats, activePosters);
+
+      const cardStats = deriveCardStats(finalStats);
+      const ovr = calcOVR(finalStats, player.position);
 
       const voterDetails = playerVotes.map(v => ({
         name: allUsersMap[v.voter_uid] || 'Unknown',
         stats: v.stats || {}
       }));
 
-      return { ...player, rawStats: medianStats, cardStats, ovr, voterDetails };
+      return {
+        ...player,
+        rawStats: finalStats,
+        cardStats, ovr, voterDetails,
+        grantedSkills,
+        specialSkills: player.specialSkills || [],
+        activePosters,
+      };
     });
 
     S.finalResults = playerCards;

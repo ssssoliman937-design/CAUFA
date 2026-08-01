@@ -68,6 +68,19 @@ export function generatePlayerCardHTML(player) {
   const rawStats = player.rawStats || {};
   const bestPosInfo = Object.keys(rawStats).length > 0 ? getBestPosition(rawStats, pos) : null;
 
+  const specialSkills = player.specialSkills || [];
+  const grantedSkills = player.grantedSkills || [];
+  const activePosters = player.activePosters || [];
+
+  const skillChipsHTML = [
+    ...specialSkills.map(name => `<span class="skill-chip chip-special">${name}</span>`),
+    ...grantedSkills.map(g => `<span class="skill-chip chip-${g.tier}">${g.skill}</span>`),
+  ].join('');
+
+  const posterPinHTML = activePosters.length > 0
+    ? `<div class="ef-poster-pin"><i class="fa-solid fa-star"></i> ${activePosters[0]}${activePosters.length > 1 ? ` +${activePosters.length - 1}` : ''}</div>`
+    : '';
+
   let posIconHTML = '';
   if (bestPosInfo) {
     if (pos === bestPosInfo.position) {
@@ -86,6 +99,7 @@ export function generatePlayerCardHTML(player) {
           ${pos}
           ${posIconHTML}
         </div>
+        ${posterPinHTML}
       </div>
       <div class="ef-portrait"></div>
       <div class="ef-bottom-info">
@@ -95,6 +109,7 @@ export function generatePlayerCardHTML(player) {
           <div class="ef-stat-box"><span class="ef-stat-val">${stats.DEF}</span><span class="ef-stat-lbl">DEF</span></div>
           <div class="ef-stat-box"><span class="ef-stat-val">${stats.PHY}</span><span class="ef-stat-lbl">PHY</span></div>
         </div>
+        ${skillChipsHTML ? `<div class="ef-skill-chips">${skillChipsHTML}</div>` : ''}
       </div>
     </div>
   `;

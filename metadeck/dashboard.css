@@ -756,6 +756,63 @@ input[type="range"]::-moz-range-thumb {
   margin-top: 4px;
 }
 
+/* ── Poster pin (top-right of card) ─────────────────────── */
+.ef-poster-pin {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--accent-color, #ffd700);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--accent-color, #ffd700);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ── Special / regular skill chips ──────────────────────── */
+.ef-skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  justify-content: center;
+}
+.skill-chip {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.skill-chip.chip-special {
+  color: #ffdf6d;
+  background: rgba(255, 223, 109, 0.1);
+  border-color: rgba(255, 223, 109, 0.4);
+}
+.skill-chip.chip-gold {
+  color: #ffcf40;
+  background: rgba(255, 207, 64, 0.12);
+  border-color: rgba(255, 207, 64, 0.4);
+}
+.skill-chip.chip-silver {
+  color: #c7d0dc;
+  background: rgba(199, 208, 220, 0.1);
+  border-color: rgba(199, 208, 220, 0.35);
+}
+.skill-chip.chip-bronze {
+  color: #c9853f;
+  background: rgba(201, 133, 63, 0.12);
+  border-color: rgba(201, 133, 63, 0.4);
+}
+
 /* ══════════════════════════════════════════════════════════
    DETAILED STATS — Modern Glassmorphism Display
    ══════════════════════════════════════════════════════════ */
@@ -1049,4 +1106,168 @@ input[type="range"]::-moz-range-thumb {
 }
 .pph-nav-btn.active i {
   color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SKILL SELECTION SCREEN
+   ══════════════════════════════════════════════════════════ */
+
+.skills-header {
+  margin-bottom: 20px;
+}
+.skills-header h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--text-main);
+}
+.skills-header h2 .highlight-name {
+  color: var(--primary);
+}
+.skills-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.skills-categories {
+  max-height: 58vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 20px;
+}
+
+.cat-block + .cat-block {
+  margin-top: 20px;
+}
+.cat-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cat-title .bar {
+  width: 14px;
+  height: 2px;
+  background: var(--primary);
+  display: inline-block;
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tile {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.tile:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-light);
+}
+.tile.on {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: var(--primary);
+  color: #cfe2ff;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35) inset;
+}
+.tile.on::before {
+  content: "✓ ";
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.skills-nav-bar {
+  display: flex;
+  gap: 10px;
+}
+.skills-nav-bar button {
+  flex: 1;
+}
+
+/* ══════════════════════════════════════════════════════════
+   REVIEW SCREEN
+   ══════════════════════════════════════════════════════════ */
+
+#screen-review h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0 0 4px;
+  color: var(--text-main);
+}
+.review-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.review-list {
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.review-item:last-child {
+  border-bottom: none;
+}
+.review-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(59,130,246,0.25), rgba(59,130,246,0.05));
+  border: 1px solid var(--border);
+}
+.review-info {
+  flex: 1;
+  min-width: 0;
+}
+.review-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+.review-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.review-edit {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--border-accent);
+  padding: 7px 13px;
+  border-radius: 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  width: auto;
+}
+.review-edit:hover {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.btn-submit-all {
+  width: 100%;
 }

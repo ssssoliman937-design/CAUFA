@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>MetaDeck - Dashboard</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dashboard.css">
@@ -24,6 +27,7 @@
           </button>
           <div id="dropdown-menu" class="dropdown-menu">
             <a href="dashboard.html" class="dropdown-item"><i class="fa-solid fa-house"></i> Home</a>
+            <a href="compare.html" class="dropdown-item"><i class="fa-solid fa-scale-balanced"></i> Compare Players</a>
             <a href="admin.html" id="header-admin-link" class="dropdown-item hidden"><i class="fa-solid fa-gear"></i> Admin Panel</a>
             <a href="preview.html" class="dropdown-item hidden"><i class="fa-solid fa-mobile-screen"></i> Card Preview</a>
             <button id="logout-btn" class="dropdown-item danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
@@ -90,11 +94,30 @@
       </div>
     </div>
 
+    <div id="screen-skills" class="screen">
+      <div class="skills-header">
+        <h2 id="skills-player-label">Skills</h2>
+        <p class="skills-subtitle">دوس على أي مهارة تختارها، دوس تاني تشيلها</p>
+      </div>
+      <div id="skills-categories" class="skills-categories"></div>
+      <div class="skills-nav-bar">
+        <button id="back-to-stats-btn" class="secondary">Back to Stats</button>
+        <button id="finish-player-btn">Save &amp; Continue</button>
+      </div>
+    </div>
+
     <div id="screen-player-done" class="screen">
       <h2 id="done-player-name"></h2>
       <p id="done-progress-text"></p>
       <button id="continue-btn">Continue</button>
       <button id="logout-for-later-btn" class="secondary">Logout for Later</button>
+    </div>
+
+    <div id="screen-review" class="screen">
+      <h2>Review Before You're Done</h2>
+      <p class="review-subtitle">راجع أي لاعب وعدّل عليه قبل ما تأكد نهائيًا</p>
+      <div id="review-list" class="review-list"></div>
+      <button id="btn-submit-all" class="btn-submit-all">Done — Submit All <i class="fa-solid fa-check"></i></button>
     </div>
 
     <div id="screen-waiting" class="screen">
@@ -116,5 +139,6 @@
   </div>
 
   <script type="module" src="dashboard.js"></script>
+  <script src="pwa.js"></script>
 </body>
 </html>

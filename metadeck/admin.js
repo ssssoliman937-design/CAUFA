@@ -9,8 +9,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
-  collection, getDocs, query, orderBy, writeBatch, serverTimestamp
+  collection, getDocs, query, where, orderBy, writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFunctions, httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import { SPECIAL_SKILLS, POSTERS, applyPosterBoosts } from "./skillsData.js";
+import { STATS_OUTFIELD, medianOf, deriveCardStats, calcOVR } from "./ovrCalculator.js";
 
 // ── Firebase ──────────────────────────────────────────────
 const firebaseConfig = {
@@ -25,9 +30,11 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
+const functions = getFunctions(app);
 
 let currentUser = null;
 let currentPlayers = [];
+let editingPlayerVotes = []; // votes for the player currently open in the modal (for poster preview)
 
 // ── DOM References ────────────────────────────────────────
 const logoutBtn = document.getElementById('logout-btn');
@@ -106,11 +113,125 @@ function renderPlayers() {
   });
 }
 
+// ── Special Skills + Posters grids ────────────────────────
+function renderSpecialSkillsGrid(selected = []) {
+  const grid = document.getElementById('special-skills-grid');
+  grid.innerHTML = SPECIAL_SKILLS.map(skill => `
+    <label>
+      <input type="checkbox" value="${skill}" ${selected.includes(skill) ? 'checked' : ''}>
+      ${skill}
+    </label>
+  `).join('');
+}
+
+function getSelectedSpecialSkills() {
+  return Array.from(document.querySelectorAll('#special-skills-grid input:checked')).map(el => el.value);
+}
+
+function renderPostersGrid(posters = {}) {
+  const grid = document.getElementById('posters-grid');
+  grid.innerHTML = Object.keys(POSTERS).map(name => {
+    const assigned = Object.prototype.hasOwnProperty.call(posters, name);
+    const active = assigned ? !!posters[name] : true;
+    return `
+      <div class="poster-row ${assigned ? 'assigned' : ''}" data-poster="${name}">
+        <label>
+          <input type="checkbox" class="poster-assign" value="${name}" ${assigned ? 'checked' : ''}>
+          ${name}
+        </label>
+        <span class="poster-toggle">
+          Active <input type="checkbox" class="poster-active" ${active ? 'checked' : ''} ${assigned ? '' : 'disabled'}>
+        </span>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.poster-assign').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const row = cb.closest('.poster-row');
+      const activeToggle = row.querySelector('.poster-active');
+      row.classList.toggle('assigned', cb.checked);
+      activeToggle.disabled = !cb.checked;
+      if (cb.checked) activeToggle.checked = true;
+      updatePosterPreview();
+    });
+  });
+  grid.querySelectorAll('.poster-active').forEach(cb => {
+    cb.addEventListener('change', updatePosterPreview);
+  });
+}
+
+function getSelectedPosters() {
+  const posters = {};
+  document.querySelectorAll('#posters-grid .poster-row').forEach(row => {
+    const name = row.dataset.poster;
+    const assigned = row.querySelector('.poster-assign').checked;
+    if (assigned) posters[name] = row.querySelector('.poster-active').checked;
+  });
+  return posters;
+}
+
+async function loadVotesForPreview(playerId) {
+  if (!playerId) { editingPlayerVotes = []; return; }
+  try {
+    const snap = await getDocs(query(collection(db, 'votes'), where('player_id', '==', playerId)));
+    editingPlayerVotes = snap.docs.map(d => d.data());
+  } catch (err) {
+    console.error('Error loading votes for preview:', err);
+    editingPlayerVotes = [];
+  }
+}
+
+function updatePosterPreview() {
+  const previewBox = document.getElementById('poster-preview');
+  const previewBody = document.getElementById('poster-preview-body');
+
+  if (editingPlayerVotes.length === 0) {
+    previewBox.classList.add('hidden');
+    return;
+  }
+
+  const medianStats = {};
+  STATS_OUTFIELD.forEach(def => {
+    const vals = editingPlayerVotes.map(v => v.stats?.[def.code]).filter(v => typeof v === 'number');
+    medianStats[def.code] = medianOf(vals);
+  });
+
+  const position = document.getElementById('player-position').value;
+  const activePosters = Object.entries(getSelectedPosters()).filter(([, on]) => on).map(([name]) => name);
+
+  const baseOvr = calcOVR(medianStats, position);
+  const boostedStats = applyPosterBoosts(medianStats, activePosters);
+  const boostedOvr = calcOVR(boostedStats, position);
+
+  const baseCard = deriveCardStats(medianStats);
+  const boostedCard = deriveCardStats(boostedStats);
+
+  previewBox.classList.remove('hidden');
+  previewBody.innerHTML = ['ATT', 'DEF', 'PHY'].map(k => `
+    <div class="poster-preview-row">
+      <span>${k}</span>
+      <span>${baseCard[k]} <span class="arrow">→</span> <span class="${boostedCard[k] > baseCard[k] ? 'up' : ''}">${boostedCard[k]}</span></span>
+    </div>
+  `).join('') + `
+    <div class="poster-preview-row">
+      <strong>OVR</strong>
+      <strong>${baseOvr} <span class="arrow">→</span> <span class="${boostedOvr > baseOvr ? 'up' : ''}">${boostedOvr}</span></strong>
+    </div>
+  `;
+}
+
+document.getElementById('player-position').addEventListener('change', updatePosterPreview);
+
 // ── Player Modal Logic ────────────────────────────────────
-btnAddPlayer.addEventListener('click', () => {
+btnAddPlayer.addEventListener('click', async () => {
   playerForm.reset();
   document.getElementById('player-id').value = '';
   document.getElementById('player-order').value = currentPlayers.length + 1;
+  renderSpecialSkillsGrid([]);
+  renderPostersGrid({});
+  editingPlayerVotes = [];
+  document.getElementById('poster-preview').classList.add('hidden');
   modalTitle.textContent = 'Add Player';
   playerModal.classList.remove('hidden');
 });
@@ -119,18 +240,24 @@ btnCancelModal.addEventListener('click', () => {
   playerModal.classList.add('hidden');
 });
 
-function openEditModal(id) {
+async function openEditModal(id) {
   const p = currentPlayers.find(x => x.id === id);
   if (!p) return;
-  
+
   document.getElementById('player-id').value = p.id;
   document.getElementById('player-name').value = p.name;
   document.getElementById('player-position').value = p.position || 'CF';
   document.getElementById('player-order').value = p.order;
   document.getElementById('player-linked-uid').value = p.linked_uid || '';
-  
+
+  renderSpecialSkillsGrid(p.specialSkills || []);
+  renderPostersGrid(p.posters || {});
+
   modalTitle.textContent = 'Edit Player';
   playerModal.classList.remove('hidden');
+
+  await loadVotesForPreview(id);
+  updatePosterPreview();
 }
 
 playerForm.addEventListener('submit', async (e) => {
@@ -145,17 +272,19 @@ playerForm.addEventListener('submit', async (e) => {
   const order = parseInt(document.getElementById('player-order').value) || 99;
   let uid = document.getElementById('player-linked-uid').value.trim();
   if (uid === '') uid = null;
+  const specialSkills = getSelectedSpecialSkills();
+  const posters = getSelectedPosters();
 
   try {
-    const data = { name, position: pos, order, linked_uid: uid };
-    
+    const data = { name, position: pos, order, linked_uid: uid, specialSkills, posters };
+
     if (id) {
       await updateDoc(doc(db, 'players', id), data);
     } else {
       const newRef = doc(collection(db, 'players'));
       await setDoc(newRef, data);
     }
-    
+
     playerModal.classList.add('hidden');
     await loadPlayers();
   } catch (err) {
@@ -178,16 +307,14 @@ async function deletePlayer(id) {
   }
 }
 
-// ── Voting Progress ───────────────────────────────────────
+// ── Voting Progress + User Management ─────────────────────
 async function loadUsers() {
   try {
     const snap = await getDocs(collection(db, 'users'));
-    const totalPlayers = currentPlayers.length; // Need players loaded first
-    
     const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
+
     if (users.length === 0) {
-      usersList.innerHTML = `<tr><td colspan="3">No users found.</td></tr>`;
+      usersList.innerHTML = `<tr><td colspan="4">No users found.</td></tr>`;
       return;
     }
 
@@ -206,13 +333,95 @@ async function loadUsers() {
           <td>${u.username} ${u.role === 'admin' ? '(Admin)' : ''}</td>
           <td>${statusText}</td>
           <td>${progress}</td>
+          <td>
+            <button class="btn-icon reset-pw" data-uid="${u.id}" data-username="${u.username}">Reset Password</button>
+            ${u.role === 'admin' ? '' : `<button class="btn-icon delete" data-uid="${u.id}" data-username="${u.username}">Delete</button>`}
+          </td>
         </tr>
       `;
     }).join('');
 
+    usersList.querySelectorAll('button.reset-pw').forEach(btn => {
+      btn.addEventListener('click', () => resetUserPassword(btn.dataset.uid, btn.dataset.username));
+    });
+    usersList.querySelectorAll('button.delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteSquadUser(btn.dataset.uid, btn.dataset.username));
+    });
+
   } catch (err) {
     console.error("Error loading users:", err);
-    usersList.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--text-muted)">Failed to load user progress.</div>`;
+    usersList.innerHTML = `<tr><td colspan="4">Failed to load user progress.</td></tr>`;
+  }
+}
+
+// ── Add User (Cloud Function — client SDK can't create another
+//    account without signing the admin out of their own session) ──
+const userModal = document.getElementById('user-modal');
+const userForm = document.getElementById('user-form');
+const btnAddUser = document.getElementById('btn-add-user');
+const btnCancelUserModal = document.getElementById('btn-cancel-user-modal');
+
+btnAddUser.addEventListener('click', () => {
+  userForm.reset();
+  userModal.classList.remove('hidden');
+});
+
+btnCancelUserModal.addEventListener('click', () => {
+  userModal.classList.add('hidden');
+});
+
+userForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btnSave = document.getElementById('btn-save-user');
+  btnSave.disabled = true;
+  btnSave.textContent = 'Creating...';
+
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-password').value;
+
+  try {
+    const createSquadUser = httpsCallable(functions, 'createSquadUser');
+    await createSquadUser({ username, password });
+
+    userModal.classList.add('hidden');
+    await loadUsers();
+  } catch (err) {
+    console.error("Error creating user:", err);
+    alert(err.message || "Failed to create user.");
+  } finally {
+    btnSave.disabled = false;
+    btnSave.textContent = 'Create User';
+  }
+});
+
+async function resetUserPassword(uid, username) {
+  const newPassword = prompt(`New password for "${username}" (min 6 characters):`);
+  if (!newPassword) return;
+  if (newPassword.length < 6) {
+    alert("Password must be at least 6 characters.");
+    return;
+  }
+
+  try {
+    const resetSquadUserPassword = httpsCallable(functions, 'resetSquadUserPassword');
+    await resetSquadUserPassword({ uid, newPassword });
+    alert(`Password for "${username}" has been reset.`);
+  } catch (err) {
+    console.error("Error resetting password:", err);
+    alert(err.message || "Failed to reset password.");
+  }
+}
+
+async function deleteSquadUser(uid, username) {
+  if (!confirm(`Delete user "${username}"? This removes their login and cannot be undone.`)) return;
+
+  try {
+    const deleteSquadUserFn = httpsCallable(functions, 'deleteSquadUser');
+    await deleteSquadUserFn({ uid });
+    await loadUsers();
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    alert(err.message || "Failed to delete user.");
   }
 }
 

@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>MetaDeck - Admin</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="admin.css">
@@ -24,6 +27,7 @@
           </button>
           <div id="dropdown-menu" class="dropdown-menu">
             <a href="dashboard.html" class="dropdown-item"><i class="fa-solid fa-house"></i> Dashboard</a>
+            <a href="compare.html" class="dropdown-item"><i class="fa-solid fa-scale-balanced"></i> Compare Players</a>
             <a href="preview.html" class="dropdown-item"><i class="fa-solid fa-mobile-screen"></i> Card Preview</a>
             <button id="logout-btn" class="dropdown-item danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
           </div>
@@ -55,7 +59,10 @@
       </div>
 
       <div class="admin-section">
-        <h3>Voting Progress</h3>
+        <h3>
+          Users
+          <button id="btn-add-user">+ Add User</button>
+        </h3>
         <div class="table-responsive">
           <table>
             <thead>
@@ -63,10 +70,11 @@
                 <th>Username</th>
                 <th>Status</th>
                 <th>Progress</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="users-list">
-              <tr><td colspan="3">Loading...</td></tr>
+              <tr><td colspan="4">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -113,9 +121,44 @@
             <label>Linked User ID (Optional)</label>
             <input type="text" id="player-linked-uid" placeholder="Firebase UID">
           </div>
+
+          <div class="form-group">
+            <label>Special Skills</label>
+            <div id="special-skills-grid" class="checkbox-grid"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Posters</label>
+            <div id="posters-grid" class="poster-grid"></div>
+            <div id="poster-preview" class="poster-preview hidden">
+              <div class="poster-preview-title">Preview (median of current votes)</div>
+              <div id="poster-preview-body"></div>
+            </div>
+          </div>
+
           <div class="modal-actions">
-            <button type="submit">Save</button>
+            <button type="submit" id="btn-save-player">Save</button>
             <button type="button" id="btn-cancel-modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="user-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h3>Add User</h3>
+        <form id="user-form">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="new-username" required placeholder="Username (no spaces)">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="text" id="new-password" required placeholder="Password" minlength="6">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" id="btn-save-user">Create User</button>
+            <button type="button" id="btn-cancel-user-modal">Cancel</button>
           </div>
         </form>
       </div>
@@ -124,5 +167,6 @@
     <footer>Made by Ammar Bakr</footer>
   </div>
   <script type="module" src="admin.js"></script>
+  <script src="pwa.js"></script>
 </body>
 </html>

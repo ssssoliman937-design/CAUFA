@@ -7,6 +7,16 @@ export function roundAvg(...vals) {
   return Math.round(vals.reduce((s, v) => s + (v ?? 50), 0) / vals.length);
 }
 
+export function medianOf(arr) {
+  if (!arr.length) return 50;
+  const sorted = [...arr].filter(v => typeof v === 'number').sort((a, b) => a - b);
+  if (!sorted.length) return 50;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
 export function deriveCardStats(stats) {
   const getWeighted = (weightsObj) => {
     const total = Object.entries(weightsObj).reduce((sum, [stat, weight]) => sum + (stats[stat] ?? 50) * weight, 0);

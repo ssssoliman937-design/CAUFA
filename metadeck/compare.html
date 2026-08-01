@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MetaDeck - Compare</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="compare.css">
+</head>
+<body>
+  <div class="app-container">
+    <div id="app-header" class="header">
+      <div class="brand-logo">
+        <i class="fa-solid fa-scale-balanced"></i>
+        <h2>METADECK</h2>
+      </div>
+      <div class="header-actions">
+        <div class="menu-wrapper">
+          <button id="menu-btn" class="user-menu-btn" aria-label="Toggle User Menu">
+            <i class="fa-solid fa-circle-user avatar-icon"></i>
+            <span id="header-username"></span>
+            <i class="fa-solid fa-chevron-down chevron-icon"></i>
+          </button>
+          <div id="dropdown-menu" class="dropdown-menu">
+            <a href="dashboard.html" class="dropdown-item"><i class="fa-solid fa-house"></i> Home</a>
+            <a href="compare.html" class="dropdown-item"><i class="fa-solid fa-scale-balanced"></i> Compare</a>
+            <a href="admin.html" id="header-admin-link" class="dropdown-item hidden"><i class="fa-solid fa-gear"></i> Admin Panel</a>
+            <button id="logout-btn" class="dropdown-item danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-loading" class="screen active">
+      <div class="loading-spinner"></div>
+      <p>Loading squad...</p>
+    </div>
+
+    <div id="screen-picker" class="screen">
+      <h2>Compare Players</h2>
+      <p class="compare-subtitle">اختار لاعبين أو أكتر (على الأقل اتنين)</p>
+      <div id="picker-chips" class="picker-chips"></div>
+      <button id="btn-compare" disabled>Compare Selected</button>
+    </div>
+
+    <div id="screen-compare" class="screen">
+      <div class="compare-toolbar">
+        <button id="btn-back-to-picker" class="secondary"><i class="fa-solid fa-chevron-left"></i> Change Players</button>
+      </div>
+      <div id="compare-table" class="compare-table"></div>
+    </div>
+
+    <footer>Made by Ammar Bakr</footer>
+  </div>
+
+  <script type="module" src="compare.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
